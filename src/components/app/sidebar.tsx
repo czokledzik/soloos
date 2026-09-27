@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, SettingsIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav";
 
@@ -40,6 +40,18 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <Link
+        href="/settings"
+        className={cn(
+          "mx-2 mt-auto mb-3 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm",
+          pathname.startsWith("/settings")
+            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+        )}
+      >
+        <SettingsIcon className="size-4" />
+        Settings
+      </Link>
     </aside>
   );
 }

@@ -47,6 +47,11 @@ On a new machine: `git clone https://github.com/your-user/soloos-backups.git "$H
 
 Restore: `createdb soloos && psql -d soloos -f soloos.sql` (see the backups repo README for older versions).
 
+## Importing history
+
+Settings → Import: Clockify detailed-report CSV (time entries) and Linear CSV (issues → tasks).
+Preview first; re-importing the same file skips rows already imported.
+
 ## Keyboard
 
 - `⌘K` — command palette: jump anywhere, start a timer on any project/task, create task/project, log time

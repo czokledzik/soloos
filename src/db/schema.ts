@@ -207,6 +207,7 @@ export const tasks = pgTable(
     estimateMin: integer(),
     sortOrder: integer().notNull().default(0),
     completedAt: timestamp({ withTimezone: true }),
+    importKey: text().unique(), // e.g. "linear:ABC-123", prevents duplicate imports
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -227,6 +228,7 @@ export const timeEntries = pgTable(
     note: text().notNull().default(""),
     billable: boolean().notNull().default(true),
     rateSnapshot: integer(), // hourly rate in minor units at the time of logging
+    importKey: text().unique(), // e.g. "clockify:<hash>", prevents duplicate imports
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

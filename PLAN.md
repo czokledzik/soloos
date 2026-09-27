@@ -90,7 +90,7 @@ Rules:
 
 ## 3. Build order
 
-Status (2026-09-27): **M1–M4 and M6 are done.** The Today dashboard is done too, including follow-ups. Next is M5: reports, CSV export, and Clockify/Linear import.
+Status (2026-09-27): **The MVP (M1–M6) is done**, including nightly backups to a private GitHub repo. Next candidates are in section 6.
 
 | # | Milestone | Done when |
 |---|---|---|
