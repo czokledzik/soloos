@@ -1,14 +1,47 @@
-import { Empty, PageHeader } from "@/components/app/page-header";
+import { startOfMonth } from "date-fns";
+import { OpenDialogButton } from "@/components/app/buttons";
+import { OpportunitySheet } from "@/components/app/opportunity-sheet";
+import { PageHeader } from "@/components/app/page-header";
+import { PipelineBoard } from "@/components/app/pipeline-board";
+import { formatMoney } from "@/lib/format";
+import { getCrmPickers, getOpportunity, listInteractions, listPipeline } from "@/server/crm-queries";
+import { getPickerData } from "@/server/queries";
 
 export const metadata = { title: "Pipeline" };
 
-export default function Page() {
+export default async function PipelinePage({ searchParams }: PageProps<"/pipeline">) {
+  const sp = await searchParams;
+  const oppId = Number(sp.opp);
+  const hasOpp = Number.isInteger(oppId) && oppId > 0;
+  const [rows, crm, pickers, opp, interactions] = await Promise.all([
+    listPipeline(),
+    getCrmPickers(),
+    getPickerData(),
+    hasOpp ? getOpportunity(oppId) : null,
+    hasOpp ? listInteractions({ opportunityId: oppId }) : [],
+  ]);
+
+  const open = rows.filter((r) => r.stage !== "won" && r.stage !== "lost");
+  const openValue = open.reduce((s, r) => s + (r.estValue ?? 0), 0);
+  const monthStart = startOfMonth(new Date());
+  const wonThisMonth = rows.filter((r) => r.stage === "won" && r.updatedAt >= monthStart).length;
+
   return (
     <div>
-      <PageHeader title="Pipeline" />
-      <div className="px-6">
-        <Empty>Coming in a later milestone — see PLAN.md.</Empty>
-      </div>
+      <PageHeader
+        title="Pipeline"
+        subtitle={`${open.length} open · ${formatMoney(openValue)} estimated · ${wonThisMonth} won this month`}
+        actions={
+          <>
+            <OpenDialogButton kind="interaction" variant="outline">
+              Log conversation
+            </OpenDialogButton>
+            <OpenDialogButton kind="lead">Add lead</OpenDialogButton>
+          </>
+        }
+      />
+      <PipelineBoard rows={rows} />
+      <OpportunitySheet opp={opp} interactions={interactions} crm={crm} projects={pickers.projects} />
     </div>
   );
 }

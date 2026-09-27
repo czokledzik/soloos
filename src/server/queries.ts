@@ -158,6 +158,7 @@ export async function getPickerData() {
       .select({
         id: projects.id,
         name: projects.name,
+        orgId: projects.orgId,
         orgName: organizations.name,
         status: projects.status,
       })

@@ -4,11 +4,20 @@ import { Stat } from "@/components/app/page-header";
 import { effectiveRate } from "@/lib/billing";
 import { formatHours, formatMoney } from "@/lib/format";
 import { updateProjectNotes } from "@/server/actions";
-import { getProject, listPayments } from "@/server/queries";
+import { OpenDialogButton } from "@/components/app/buttons";
+import { Timeline } from "@/components/app/timeline";
+import { getCrmPickers, listInteractions } from "@/server/crm-queries";
+import { getPickerData, getProject, listPayments } from "@/server/queries";
 
 export default async function ProjectOverviewPage({ params }: PageProps<"/projects/[id]/overview">) {
   const id = Number((await params).id);
-  const [project, payments] = await Promise.all([getProject(id), listPayments(id)]);
+  const [project, payments, interactions, crm, pickers] = await Promise.all([
+    getProject(id),
+    listPayments(id),
+    listInteractions({ projectId: id }),
+    getCrmPickers(),
+    getPickerData(),
+  ]);
   if (!project) notFound();
   const paid = payments.filter((p) => p.paidAt).reduce((s, p) => s + p.amount, 0);
   const budgetPct = project.budgetHours ? Math.round((project.totalMin / 60 / project.budgetHours) * 100) : null;
@@ -40,10 +49,21 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
         )}
         {payments.length > 0 && <Stat label="Paid" value={formatMoney(paid, project.currency)} />}
       </div>
-      <section className="max-w-3xl">
-        <h2 className="mb-2 text-sm font-medium">Notes</h2>
-        <NotesEditor initial={project.notesMd} save={saveNotes} />
-      </section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section>
+          <h2 className="mb-2 text-sm font-medium">Notes</h2>
+          <NotesEditor initial={project.notesMd} save={saveNotes} />
+        </section>
+        <section className="min-w-0">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-medium">Conversations</h2>
+            <OpenDialogButton kind="interaction" opts={{ orgId: project.orgId, projectId: id }} variant="ghost" size="xs">
+              Log
+            </OpenDialogButton>
+          </div>
+          <Timeline interactions={interactions} crm={crm} projects={pickers.projects} showLinks={false} />
+        </section>
+      </div>
     </div>
   );
 }

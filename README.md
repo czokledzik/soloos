@@ -1,6 +1,6 @@
 # SoloOS
 
-Personal ops app for freelance/side-business work: projects, tasks, time tracking, payments and (soon) a light CRM.
+Personal ops app for freelance/side-business work: projects, tasks, time tracking, payments, and a light CRM (lead pipeline, conversation log, client timeline).
 Single user, runs locally. See [PLAN.md](PLAN.md) for scope and roadmap.
 
 ## Stack
@@ -38,6 +38,8 @@ The dev server binds to `127.0.0.1` only — there is no auth yet, so don't expo
 
 - `⌘K` — command palette: jump anywhere, start a timer on any project/task, create task/project, log time
 - `⌥S` — stop the running timer, or resume the last one
+
+Set `NEXT_PUBLIC_OFERTOWNIK_URL` in `.env` to turn proposal slugs on leads into links.
 
 ## Layout
 

@@ -1,11 +1,9 @@
 "use server";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import {
   contractType,
   db,
-  orgStatus,
   organizations,
   payments,
   pricing,
@@ -20,12 +18,7 @@ import {
 import { isBillableByDefault, resolveRate } from "@/lib/billing";
 import { parseDuration } from "@/lib/format";
 import { ActionError, int, money, oneOf, reqStr, run, str } from "./form";
-
-// Single-user app: every page renders fresh from the DB, so refreshing the
-// whole tree after a mutation is cheap and keeps everything consistent.
-function refreshAll() {
-  revalidatePath("/", "layout");
-}
+import { refreshAll } from "./refresh";
 
 async function projectWithOrg(projectId: number) {
   const p = await db.query.projects.findFirst({
@@ -34,26 +27,6 @@ async function projectWithOrg(projectId: number) {
   });
   if (!p) throw new ActionError("Project not found");
   return p;
-}
-
-// ---------- Organizations ----------
-
-export async function createOrganization(fd: FormData) {
-  return run(async () => {
-    const [org] = await db
-      .insert(organizations)
-      .values({
-        name: reqStr(fd, "name"),
-        kind: oneOf(fd, "kind", ["company", "person"] as const) ?? "company",
-        status: oneOf(fd, "status", orgStatus.enumValues) ?? "active",
-        website: str(fd, "website"),
-        defaultRate: money(fd, "defaultRate"),
-        currency: str(fd, "currency") ?? "PLN",
-      })
-      .returning({ id: organizations.id });
-    refreshAll();
-    return org.id;
-  });
 }
 
 // ---------- Projects ----------

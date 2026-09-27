@@ -59,6 +59,17 @@ export const OPPORTUNITY_STAGES: { value: OpportunityStage; label: string }[] = 
   { value: "lost", label: "Lost" },
 ];
 
+/** Tailwind classes for the stage color dot. */
+export const STAGE_DOT: Record<OpportunityStage, string> = {
+  new: "bg-sky-500",
+  contacted: "bg-indigo-500",
+  call: "bg-violet-500",
+  proposal: "bg-amber-500",
+  negotiating: "bg-orange-500",
+  won: "bg-emerald-500",
+  lost: "bg-muted-foreground/40",
+};
+
 export const LEAD_SOURCES = [
   { value: "fb_group", label: "Facebook group" },
   { value: "referral", label: "Referral" },

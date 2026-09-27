@@ -3,29 +3,50 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { Organization } from "@/db/schema";
+import type { CrmPickers } from "@/server/crm-queries";
 import type { PickerData } from "@/server/queries";
+import { InteractionForm, LeadForm, OrgForm } from "./crm-forms";
 import { ProjectForm, TaskCreateForm, TimeEntryForm } from "./forms";
 
 type DialogRequest =
   | { kind: "task"; projectId?: number; status?: string }
   | { kind: "time"; projectId?: number; taskId?: number; date?: string }
-  | { kind: "project"; orgId?: number };
+  | { kind: "project"; orgId?: number }
+  | { kind: "lead" }
+  | { kind: "interaction"; orgId?: number; opportunityId?: number; projectId?: number }
+  | { kind: "org" };
+
+type Kind = DialogRequest["kind"];
 
 const EVENT = "global-dialog";
 
-export function openGlobalDialog(kind: DialogRequest["kind"], opts: Omit<DialogRequest, "kind"> = {}) {
+const TITLES: Record<Kind, string> = {
+  task: "New task",
+  time: "Log time",
+  project: "New project",
+  lead: "Add lead",
+  interaction: "Log conversation",
+  org: "New client",
+};
+
+const WIDTHS: Record<Kind, string> = {
+  task: "sm:max-w-md",
+  time: "sm:max-w-xl",
+  project: "sm:max-w-xl",
+  lead: "sm:max-w-2xl",
+  interaction: "sm:max-w-2xl",
+  org: "sm:max-w-md",
+};
+
+export function openGlobalDialog<K extends Kind>(
+  kind: K,
+  opts: Omit<Extract<DialogRequest, { kind: K }>, "kind"> = {} as Omit<Extract<DialogRequest, { kind: K }>, "kind">,
+) {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: { kind, ...opts } }));
 }
 
-/** App-wide "new task / log time / new project" dialogs, openable from anywhere. */
-export function GlobalDialogs({
-  pickers,
-  orgs,
-}: {
-  pickers: PickerData;
-  orgs: Pick<Organization, "id" | "name">[];
-}) {
+/** App-wide create dialogs, openable from anywhere via openGlobalDialog(). */
+export function GlobalDialogs({ pickers, crm }: { pickers: PickerData; crm: CrmPickers }) {
   const [req, setReq] = useState<DialogRequest | null>(null);
   const router = useRouter();
 
@@ -36,13 +57,12 @@ export function GlobalDialogs({
   }, []);
 
   const close = () => setReq(null);
-  const title = { task: "New task", time: "Log time", project: "New project" }[req?.kind ?? "task"];
 
   return (
     <Dialog open={req != null} onOpenChange={(o) => !o && close()}>
-      <DialogContent className={req?.kind === "task" ? "sm:max-w-md" : "sm:max-w-xl"}>
+      <DialogContent className={req ? WIDTHS[req.kind] : undefined}>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{req ? TITLES[req.kind] : ""}</DialogTitle>
         </DialogHeader>
         {req?.kind === "task" && (
           <TaskCreateForm
@@ -63,11 +83,31 @@ export function GlobalDialogs({
         )}
         {req?.kind === "project" && (
           <ProjectForm
-            orgs={orgs}
+            orgs={crm.orgs}
             defaultOrgId={req.orgId}
             onDone={(id) => {
               close();
               if (id) router.push(`/projects/${id}`);
+            }}
+          />
+        )}
+        {req?.kind === "lead" && (
+          <LeadForm
+            crm={crm}
+            onDone={(id) => {
+              close();
+              if (id) router.push(`/pipeline?opp=${id}`);
+            }}
+          />
+        )}
+        {req?.kind === "interaction" && (
+          <InteractionForm crm={crm} projects={pickers.projects} defaults={req} onDone={close} />
+        )}
+        {req?.kind === "org" && (
+          <OrgForm
+            onDone={(id) => {
+              close();
+              if (id) router.push(`/clients/${id}`);
             }}
           />
         )}

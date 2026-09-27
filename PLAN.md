@@ -90,7 +90,7 @@ Rules:
 
 ## 3. Build order
 
-Status (2026-09-27): **M1, M2, M3 and M6 are done.** Today's dashboard is partly done (timer, focus tasks, hours by client). Follow-ups are still missing.
+Status (2026-09-27): **M1–M4 and M6 are done.** The Today dashboard is done too, including follow-ups. Next is M5: reports, CSV export, and Clockify/Linear import.
 
 | # | Milestone | Done when |
 |---|---|---|

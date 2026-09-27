@@ -1,9 +1,13 @@
+import Link from "next/link";
 import { addDays, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { EntriesList } from "@/components/app/entries-list";
 import { Empty, PageHeader, Stat } from "@/components/app/page-header";
 import { TaskList } from "@/components/app/task-list";
 import { TaskSheet } from "@/components/app/task-sheet";
-import { formatDate, formatHours, formatMinutes, toDateString } from "@/lib/format";
+import { OpenDialogButton } from "@/components/app/buttons";
+import { formatDate, formatHours, formatMinutes, relativeDay, toDateString } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { listFollowUps } from "@/server/crm-queries";
 import {
   getPickerData,
   getRunningTimer,
@@ -23,7 +27,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/">) {
   const monthStart = startOfMonth(now);
   const taskId = Number(sp.task);
 
-  const [todayEntries, weekByClient, monthByClient, openTasks, timer, pickers, openTask] = await Promise.all([
+  const [todayEntries, weekByClient, monthByClient, openTasks, timer, pickers, openTask, followUps] = await Promise.all([
     listTimeEntries({ from: dayStart, to: addDays(dayStart, 1) }),
     minutesByClient(weekStart, addDays(weekStart, 7)),
     minutesByClient(monthStart, addDays(now, 1)),
@@ -31,6 +35,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/">) {
     getRunningTimer(),
     getPickerData(),
     Number.isInteger(taskId) ? getTask(taskId) : null,
+    listFollowUps(),
   ]);
 
   const today = toDateString(now);
@@ -47,7 +52,20 @@ export default async function TodayPage({ searchParams }: PageProps<"/">) {
 
   return (
     <div>
-      <PageHeader title="Today" subtitle={formatDate(now, "EEEE, d MMMM")} />
+      <PageHeader
+        title="Today"
+        subtitle={formatDate(now, "EEEE, d MMMM")}
+        actions={
+          <>
+            <OpenDialogButton kind="interaction" variant="outline">
+              Log conversation
+            </OpenDialogButton>
+            <OpenDialogButton kind="lead" variant="outline">
+              Add lead
+            </OpenDialogButton>
+          </>
+        }
+      />
       <div className="grid gap-6 px-6 pb-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Today" value={formatMinutes(todayMin)} />
@@ -56,7 +74,38 @@ export default async function TodayPage({ searchParams }: PageProps<"/">) {
           <Stat label="Open tasks" value={openTasks.length} sub={overdue ? `${overdue} overdue` : "none overdue"} />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+        {followUps.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-medium">
+              Follow-ups due <span className="font-normal text-muted-foreground">{followUps.length}</span>
+            </h2>
+            <div className="divide-y rounded-xl border">
+              {followUps.map((f) => (
+                <Link
+                  key={f.id}
+                  href={`/pipeline?opp=${f.id}`}
+                  className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/30"
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-medium">{f.nextAction || "Follow up"}</span>
+                    <span className="text-muted-foreground"> · {f.title}</span>
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">{f.orgName}</span>
+                  <span
+                    className={cn(
+                      "w-20 text-right text-xs",
+                      f.nextActionAt! < today ? "font-medium text-red-500" : "text-amber-600",
+                    )}
+                  >
+                    {relativeDay(f.nextActionAt!)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <section>
             <h2 className="mb-2 text-sm font-medium">Focus</h2>
             {focus.length ? (

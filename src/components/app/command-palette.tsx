@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Building2Icon,
+  MessageSquarePlusIcon,
+  SparklesIcon,
   BriefcaseIcon,
   CircleDotIcon,
   ClockIcon,
@@ -20,13 +23,22 @@ import {
   CommandList,
   CommandShortcut,
 } from "@/components/ui/command";
+import type { CrmPickers } from "@/server/crm-queries";
 import type { PickerData } from "@/server/queries";
 import { startTimer, stopTimer } from "@/server/actions";
 import { NAV_ITEMS } from "./nav";
 import { openGlobalDialog } from "./global-dialogs";
 import { useAction } from "./use-action";
 
-export function CommandPalette({ data, timerRunning }: { data: PickerData; timerRunning: boolean }) {
+export function CommandPalette({
+  data,
+  crm,
+  timerRunning,
+}: {
+  data: PickerData;
+  crm: CrmPickers;
+  timerRunning: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const router = useRouter();
@@ -75,8 +87,17 @@ export function CommandPalette({ data, timerRunning }: { data: PickerData; timer
             <CommandItem onSelect={() => run(() => openGlobalDialog("time"))}>
               <ClockIcon /> Log time manually
             </CommandItem>
+            <CommandItem onSelect={() => run(() => openGlobalDialog("lead"))}>
+              <SparklesIcon /> Add lead
+            </CommandItem>
+            <CommandItem onSelect={() => run(() => openGlobalDialog("interaction"))}>
+              <MessageSquarePlusIcon /> Log conversation
+            </CommandItem>
             <CommandItem onSelect={() => run(() => openGlobalDialog("project"))}>
               <PlusIcon /> New project
+            </CommandItem>
+            <CommandItem onSelect={() => run(() => openGlobalDialog("org"))}>
+              <PlusIcon /> New client
             </CommandItem>
           </CommandGroup>
           <CommandGroup heading="Go to">
@@ -101,6 +122,32 @@ export function CommandPalette({ data, timerRunning }: { data: PickerData; timer
           </CommandGroup>
           {searching && (
             <>
+              <CommandGroup heading="Clients">
+                {crm.orgs.map((o) => (
+                  <CommandItem
+                    key={o.id}
+                    value={`client ${o.id} ${o.name}`}
+                    onSelect={() => run(() => router.push(`/clients/${o.id}`))}
+                  >
+                    <Building2Icon />
+                    <span className="truncate">{o.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandGroup heading="Leads">
+                {crm.opportunities
+                  .filter((o) => o.stage !== "won")
+                  .map((o) => (
+                    <CommandItem
+                      key={o.id}
+                      value={`lead ${o.id} ${o.title}`}
+                      onSelect={() => run(() => router.push(`/pipeline?opp=${o.id}`))}
+                    >
+                      <SparklesIcon />
+                      <span className="truncate">{o.title}</span>
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
               <CommandGroup heading="Tasks">
                 {data.tasks.map((t) => (
                   <CommandItem

@@ -63,6 +63,7 @@ function TaskEditor({
   const { exec } = useAction();
   const [title, setTitle] = useState(task.title);
   const [body, setBody] = useState(task.bodyMd);
+  const [due, setDue] = useState(task.dueDate ?? "");
   const [estimate, setEstimate] = useState(task.estimateMin ? formatMinutes(task.estimateMin) : "");
 
   const save = (patch: TaskPatch) => exec(() => updateTask(task.id, patch));
@@ -108,8 +109,11 @@ function TaskEditor({
           <Field label="Due">
             <Input
               type="date"
-              defaultValue={task.dueDate ?? ""}
-              onChange={(e) => save({ dueDate: e.target.value || null })}
+              value={due}
+              onChange={(e) => {
+                setDue(e.target.value);
+                save({ dueDate: e.target.value || null });
+              }}
             />
           </Field>
           <Field label="Estimate">
