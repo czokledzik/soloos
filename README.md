@@ -33,6 +33,19 @@ The dev server binds to `127.0.0.1` only — there is no auth yet, so don't expo
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:studio` | Drizzle Studio (DB browser) |
 | `pnpm db:seed` | Seed base data (idempotent) |
+| `pnpm backup` | Dump the DB to the backups repo and push |
+| `pnpm backup:install` | Install the nightly (20:00) launchd backup job; re-run after changing `backup.sh` or `.env` |
+| `pnpm backup:uninstall` | Remove the launchd job |
+
+## Backups
+
+Nightly plain-SQL `pg_dump` committed to the private repo `your-user/soloos-backups`, cloned at
+`~/Library/Application Support/SoloOS/soloos-backups` (launchd can't read `~/Documents`, so the job and its config live there too).
+Git history is the retention: one commit per backup. Log: `~/Library/Logs/soloos-backup.log`.
+
+On a new machine: `git clone https://github.com/your-user/soloos-backups.git "$HOME/Library/Application Support/SoloOS/soloos-backups"`, then `pnpm backup:install`.
+
+Restore: `createdb soloos && psql -d soloos -f soloos.sql` (see the backups repo README for older versions).
 
 ## Keyboard
 
