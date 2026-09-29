@@ -33,9 +33,7 @@ The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWO
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:studio` | Drizzle Studio (DB browser) |
 | `pnpm db:seed` | Seed base data (idempotent) |
-| `pnpm backup` | Dump the DB to the backups repo and push |
-| `pnpm backup:install` | Install the nightly (20:00) launchd backup job; re-run after changing `backup.sh` or `.env` |
-| `pnpm backup:uninstall` | Remove the launchd job |
+| `pnpm backup` | Run the production backup now (triggers the GitHub Action) |
 
 ## Deploying (Vercel + Neon)
 
@@ -48,13 +46,13 @@ The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWO
 
 ## Backups
 
-Nightly plain-SQL `pg_dump` committed to the private repo `your-user/soloos-backups`, cloned at
-`~/Library/Application Support/SoloOS/soloos-backups` (launchd can't read `~/Documents`, so the job and its config live there too).
-Git history is the retention: one commit per backup. Log: `~/Library/Logs/soloos-backup.log`.
+The production database (Neon) is dumped nightly (~20:00) by a GitHub Action in the private repo
+`your-user/soloos-backups` and committed as `soloos.sql`; git history is the retention.
+The Action's `DATABASE_URL` secret is Neon's direct (unpooled) connection string.
+Neon's own point-in-time restore covers the last few hours on top of that.
 
-On a new machine: `git clone https://github.com/your-user/soloos-backups.git "$HOME/Library/Application Support/SoloOS/soloos-backups"`, then `pnpm backup:install`.
-
-Restore: `createdb soloos && psql -d soloos -f soloos.sql` (see the backups repo README for older versions).
+Restore: `psql "<empty database>" -f soloos.sql`. For older versions see the backups repo README.
+The local dev database isn't backed up.
 
 ## Importing history
 

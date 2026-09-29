@@ -117,7 +117,7 @@ Keep it separate for now.
 - Nightly `pg_dump` committed to the private repo `soloos-backups`.
 
 ## 6. Next (agreed 2026-09-29)
-1. **Hosting**: Vercel + Neon (Frankfurt), password login, Europe/Warsaw timezone, migrations on production deploy, nightly backup of Neon to `soloos-backups` via GitHub Actions.
+1. ~~**Hosting**~~ (done 2026-09-29): Vercel + Neon (Frankfurt), password login, Europe/Warsaw timezone, migrations on production deploy, nightly backup of Neon to `soloos-backups` via GitHub Actions.
 2. **Messages model**: threads (email thread, Telegram chat, group chat) with individual messages, participants mapped to contacts (collaborators too), and a merged timeline by date across channels. Existing pasted conversations get converted.
 3. **Imports**: Telegram Desktop JSON export, email via IMAP (Hostinger) filtered to known contact addresses with a 15-minute sync, and a paste-and-fix screen that splits pasted text into editable messages. Dedupe by source message ID.
 4. **Project docs** (inspired by Wiegers, *Software Requirements Essentials*):
