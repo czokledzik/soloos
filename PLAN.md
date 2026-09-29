@@ -1,7 +1,7 @@
 # SoloOS: plan (v3)
 
 A single-user app for side-business work. Agency work stays in ClickUp.
-**Current focus: project management, time tracking, and a light CRM.** Portal, proposals, and AI come later (section 6).
+The MVP (project management, time tracking, light CRM) is done. **Current focus: hosting, then communication imports and project docs (section 6).**
 
 ## 1. Stack (aligned with ofertownik)
 
@@ -114,15 +114,21 @@ Keep it separate for now.
 - Server components + server actions for CRUD, with no separate REST API until MCP/n8n needs one.
 - Zod validation on all actions.
 - Every table has `created_at`/`updated_at`, and deletes are soft (`archived_at`) for organizations, projects, and tasks.
-- Nightly `pg_dump` to a cloud-synced folder via a launchd job.
+- Nightly `pg_dump` committed to the private repo `soloos-backups`.
 
-## 6. Later (not in MVP)
-- **MCP server** so Claude Code/Desktop, using your subscription, can summarize pasted conversations and transcripts, enrich leads, draft updates, and log time.
-- **Client portal** (`/p/<token>`) + progress-report PDF. Requires deploying (VPS or Vercel + hosted Postgres) and adding auth.
-- **Ofertownik stats** on opportunities, and eventually merging it in as a module.
-- **Useme/Bizky** period summary export.
-- Transcripts on interactions with AI summary and action items → tasks.
-- Telegram JSON / `.eml` import, IMAP sync, and read-only ClickUp sync.
+## 6. Next (agreed 2026-09-29)
+1. **Hosting**: Vercel + Neon (Frankfurt), password login, Europe/Warsaw timezone, migrations on production deploy, nightly backup of Neon to `soloos-backups` via GitHub Actions.
+2. **Messages model**: threads (email thread, Telegram chat, group chat) with individual messages, participants mapped to contacts (collaborators too), and a merged timeline by date across channels. Existing pasted conversations get converted.
+3. **Imports**: Telegram Desktop JSON export, email via IMAP (Hostinger) filtered to known contact addresses with a 15-minute sync, and a paste-and-fix screen that splits pasted text into editable messages. Dedupe by source message ID.
+4. **Project docs** (inspired by Wiegers, *Software Requirements Essentials*):
+   - Project brief: short, edited in place, and the first thing AI reads.
+   - Decision log: dated decisions with source (message, call) and who decided.
+   - Scope baseline and change requests: requested by, impact on hours and price, status (proposed, approved, rejected). This matters most for fixed-price work.
+   - Doc pages with revision history; Mermaid diagrams rendered with pan and zoom.
+   - Systems list: links to repos, n8n workflows, ElevenLabs agents, Twilio, Baserow. Never credentials.
+   - Code, n8n workflow JSON and agent configs stay in git; SoloOS links to them.
+5. **MCP server** so Claude (Claude.ai, mobile, Claude Code) can use SoloOS on the user's subscription: search, client and project context, screenshot import, process new messages, update the brief, decision log and diagrams.
+6. **In-app AI buttons** behind a provider setting: API key by default; optional local Claude Code runner (the user's own CLI on an always-on machine, polling a jobs table).
+7. **Client portal** (`/p/<token>`): progress, published updates and zoomable diagrams (read-only, always the latest version). The portal never triggers AI.
 
-## 7. Open question
-- Should the UI be in Polish or English? (Ofertownik is in Polish.)
+Also later: ofertownik stats on opportunities, Useme/Bizky period export, read-only ClickUp sync, pgvector search if full-text search isn't enough, open-sourcing (settings instead of hardcoded PLN/timezone/contract types, Deploy button, Docker Compose).

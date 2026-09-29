@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SearchIcon, SettingsIcon } from "lucide-react";
+import { LogOutIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav";
 
-export function Sidebar() {
+export function Sidebar({ canLogout = false }: { canLogout?: boolean }) {
   const pathname = usePathname();
   return (
     <aside className="flex w-52 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
@@ -40,18 +41,31 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <Link
-        href="/settings"
-        className={cn(
-          "mx-2 mt-auto mb-3 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm",
-          pathname.startsWith("/settings")
-            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+      <div className="mx-2 mt-auto mb-3 flex items-center gap-1">
+        <Link
+          href="/settings"
+          className={cn(
+            "flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm",
+            pathname.startsWith("/settings")
+              ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+              : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+          )}
+        >
+          <SettingsIcon className="size-4" />
+          Settings
+        </Link>
+        {canLogout && (
+          <form action={logout}>
+            <button
+              type="submit"
+              title="Log out"
+              className="rounded-lg p-2 text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+            >
+              <LogOutIcon className="size-4" />
+            </button>
+          </form>
         )}
-      >
-        <SettingsIcon className="size-4" />
-        Settings
-      </Link>
+      </div>
     </aside>
   );
 }

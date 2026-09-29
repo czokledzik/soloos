@@ -1,7 +1,7 @@
 # SoloOS
 
 Personal ops app for freelance/side-business work: projects, tasks, time tracking, payments, and a light CRM (lead pipeline, conversation log, client timeline).
-Single user, runs locally. See [PLAN.md](PLAN.md) for scope and roadmap.
+Single user. Runs locally for development and on Vercel + Neon in production. See [PLAN.md](PLAN.md) for scope and roadmap.
 
 ## Stack
 
@@ -21,7 +21,7 @@ pnpm db:seed                # "Personal" internal client + SoloOS project
 pnpm dev                    # http://127.0.0.1:3000
 ```
 
-The dev server binds to `127.0.0.1` only — there is no auth yet, so don't expose it.
+The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWORD` to require a login (always required in production).
 
 ## Scripts
 
@@ -36,6 +36,15 @@ The dev server binds to `127.0.0.1` only — there is no auth yet, so don't expo
 | `pnpm backup` | Dump the DB to the backups repo and push |
 | `pnpm backup:install` | Install the nightly (20:00) launchd backup job; re-run after changing `backup.sh` or `.env` |
 | `pnpm backup:uninstall` | Remove the launchd job |
+
+## Deploying (Vercel + Neon)
+
+- Production is the `main` branch on Vercel, with a Neon Postgres database (Frankfurt) connected through Vercel's Storage integration.
+  The integration sets `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct, used for migrations).
+- Required env var: `APP_PASSWORD`. Optional: `APP_TIMEZONE` (default `Europe/Warsaw`), `NEXT_PUBLIC_OFERTOWNIK_URL`.
+- `vercel.json` pins functions to `fra1` (next to the database) and builds with `scripts/vercel-build.sh`,
+  which runs `pnpm db:migrate` on production deploys only. Preview deploys never touch the schema.
+- Dev and prod are separate databases: develop against local Postgres, ship schema changes as migration files.
 
 ## Backups
 
