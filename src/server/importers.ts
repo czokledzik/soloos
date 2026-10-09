@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { format } from "date-fns";
 import Papa from "papaparse";
 import type { TaskStatus } from "@/db/schema";
 
@@ -181,6 +182,14 @@ function linearPriority(p: string): number {
   return 0;
 }
 
+/** A calendar day ("yyyy-MM-dd"); a leading ISO date is taken as written, other formats in local time. */
+function anyDay(s: string | undefined): string | null {
+  const iso = s?.trim().match(/^\d{4}-\d{2}-\d{2}/);
+  if (iso) return iso[0];
+  const d = anyDate(s);
+  return d ? format(d, "yyyy-MM-dd") : null;
+}
+
 function anyDate(s: string | undefined): Date | null {
   if (!s?.trim()) return null;
   const d = new Date(s.trim());
@@ -211,20 +220,20 @@ export function parseLinear(text: string): ParseResult<LinearIssue> {
     };
   }
   const items: LinearIssue[] = rows
-    .filter((r) => r[col.id!]?.trim() && r[col.title!]?.trim())
-    .map((r, i) => {
+    .map((r, i) => ({ r, line: i + 2 }))
+    .filter(({ r }) => r[col.id!]?.trim() && r[col.title!]?.trim())
+    .map(({ r, line }) => {
       const completedAt = anyDate(col.completed ? r[col.completed] : undefined);
-      const due = anyDate(col.due ? r[col.due] : undefined);
       const team = (col.team && r[col.team]?.trim()) || "Linear";
       return {
-        line: i + 2,
+        line,
         identifier: r[col.id!].trim(),
         title: r[col.title!].trim(),
         description: (col.description && r[col.description]) || "",
         status: linearStatus((col.status && r[col.status]) || "", completedAt != null),
         priority: linearPriority((col.priority && r[col.priority]) || ""),
         project: (col.project && r[col.project]?.trim()) || `${team} (Linear)`,
-        dueDate: due ? due.toISOString().slice(0, 10) : null,
+        dueDate: anyDay(col.due ? r[col.due] : undefined),
         createdAt: anyDate(col.created ? r[col.created] : undefined),
         completedAt,
         canceled: anyDate(col.canceled ? r[col.canceled] : undefined) != null,
