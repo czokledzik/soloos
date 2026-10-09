@@ -3,10 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, checkPassword, createSession } from "@/server/session";
+import { safeNext } from "./safe-next";
 
-/** Only allow local paths, so `?next=` can't redirect off-site. */
-const safeNext = (next: unknown) =>
-  typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/";
 
 export async function login(fd: FormData) {
   const next = safeNext(fd.get("next"));
