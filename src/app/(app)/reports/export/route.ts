@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { format } from "date-fns";
 import { entryValue } from "@/lib/billing";
+import { toCsv } from "@/lib/csv";
 import { readReportParams } from "@/lib/report-params";
 import { getReportEntries } from "@/server/report-queries";
 
@@ -18,11 +19,6 @@ const HEADER = [
   "Value",
   "Currency",
 ];
-
-function cell(v: string | number): string {
-  const s = String(v);
-  return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 /** Detailed time entries for the same filters as /reports, as CSV. */
 export async function GET(request: NextRequest) {
@@ -42,8 +38,7 @@ export async function GET(request: NextRequest) {
     e.billable && e.rateSnapshot != null ? (entryValue(e) / 100).toFixed(2) : "",
     e.currency,
   ]);
-  // BOM so Excel opens UTF-8 (Polish characters) correctly.
-  const csv = "﻿" + [HEADER, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+  const csv = toCsv([HEADER, ...rows]);
   const name = `soloos-time-${format(period.from, "yyyyMMdd")}-${format(new Date(period.to.getTime() - 1), "yyyyMMdd")}.csv`;
   return new Response(csv, {
     headers: {
