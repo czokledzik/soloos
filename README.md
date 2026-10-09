@@ -33,7 +33,20 @@ The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWO
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:studio` | Drizzle Studio (DB browser) |
 | `pnpm db:seed` | Seed base data (idempotent) |
+| `pnpm test` | Unit + integration tests (Vitest, against the `soloos_test` database) |
+| `pnpm test:e2e` | Browser tests (Playwright, production build on :3100 against `soloos_e2e`) |
 | `pnpm backup` | Run the production backup now (triggers the GitHub Action) |
+
+## Tests
+
+- `pnpm test` runs pure unit tests (`src/**/*.test.ts`) and integration tests (`test/integration/`) that call
+  server actions and queries against a real Postgres. The database comes from `TEST_DATABASE_URL`
+  (default `postgres://127.0.0.1:5432/soloos_test`); it's created and migrated automatically and truncated
+  before each test, so the name must contain "test".
+- `pnpm test:e2e` builds the app into `.next-e2e`, serves it on port 3100 with `APP_PASSWORD=e2e-password`,
+  and drives it with Chromium. The `soloos_e2e` database (`E2E_DATABASE_URL`) is dropped and re-migrated on
+  every run. First time: `pnpm exec playwright install chromium` (add `--with-deps` on Linux).
+  The flow tests in `e2e/flows.spec.ts` build on each other and run in order.
 
 ## Deploying (Vercel + Neon)
 
