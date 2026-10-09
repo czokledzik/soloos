@@ -36,4 +36,8 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
   quoted history stripped, dedupe by Message-ID, resumes by UID per mailbox (migration 0004 adds `app_state`).
   Settings → Email → Sync now; `/api/cron/email-sync` for schedulers. **Not scheduled automatically**: Vercel Hobby
   only allows daily crons, so the schedule is your call (see README → Messages).
-  Not tested against a real IMAP server (no credentials here); parsing/threading/sync logic is tested with raw emails.
+  Verified the IMAP client path (search/fetch/UID resume) against a local fake IMAP server (hoodiecrow); not against
+  Hostinger itself (no credentials here).
+- Client portal (PLAN §6.7) done (migration 0005, additive): project → Portal tab turns on a `/p/<token>` link
+  (32 random bytes, "New link" rotates it, "Turn off" kills it). Shows task progress, published updates and published
+  doc pages (Mermaid with pan/zoom), never rates/hours/notes/messages; `noindex`; no AI anywhere near it.

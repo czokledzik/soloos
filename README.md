@@ -90,6 +90,12 @@ project timelines show them interleaved with logged conversations.
   Vercel Cron sends that header itself; add `"crons": [{ "path": "/api/cron/email-sync", "schedule": "*/15 * * * *" }]`
   to `vercel.json` on a plan that allows sub-daily crons (Hobby allows one run a day), or call it from any scheduler.
 
+## Client portal
+
+Project → Portal → Turn on gives a read-only link (`/p/<token>`) for the client: task progress, updates you publish,
+and doc pages you tick (always their latest version, diagrams zoomable). It never shows rates, hours, notes or
+messages. "New link" replaces a leaked link; "Turn off" disables it.
+
 ## Claude (MCP)
 
 SoloOS is an MCP server at `/api/mcp` (Streamable HTTP), so Claude can read and update it: search, client and

@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, appPassword, verifySession } from "@/server/session";
 
 /** Endpoints that check their own credentials (MCP bearer tokens, OAuth, cron secret). */
-const SELF_AUTHENTICATED = ["/api/mcp", "/api/cron/email-sync", "/oauth/register", "/oauth/token", "/.well-known/"];
+// "/p/" is the client portal: the unguessable token in the URL is the credential.
+const SELF_AUTHENTICATED = ["/api/mcp", "/api/cron/email-sync", "/oauth/register", "/oauth/token", "/.well-known/", "/p/"];
 
 export function proxy(request: NextRequest) {
   if (SELF_AUTHENTICATED.some((p) => request.nextUrl.pathname === p || (p.endsWith("/") && request.nextUrl.pathname.startsWith(p)))) {

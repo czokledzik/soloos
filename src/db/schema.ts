@@ -126,6 +126,8 @@ export const projects = pgTable(
     // Agreed scope for fixed-price work; change requests are measured against it.
     scopeMd: text().notNull().default(""),
     scopeBaselinedAt: timestamp({ withTimezone: true }),
+    // Secret for the read-only client portal at /p/<token>; null = portal off.
+    portalToken: text().unique(),
     archivedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -383,11 +385,30 @@ export const docPages = pgTable(
     title: text().notNull(),
     bodyMd: text().notNull().default(""),
     sortOrder: integer().notNull().default(0),
+    /** Shown on the client portal (always the latest version). */
+    published: boolean().notNull().default(false),
     archivedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [index().on(t.projectId)],
+);
+
+/** Progress updates for the client; drafts until published. */
+export const projectUpdates = pgTable(
+  "project_updates",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    bodyMd: text().notNull().default(""),
+    publishedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId, t.publishedAt)],
 );
 
 /** Every saved version of a doc page (the latest is also on doc_pages). */
@@ -452,6 +473,11 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   changeRequests: many(changeRequests),
   docPages: many(docPages),
   systems: many(systems),
+  updates: many(projectUpdates),
+}));
+
+export const projectUpdatesRelations = relations(projectUpdates, ({ one }) => ({
+  project: one(projects, { fields: [projectUpdates.projectId], references: [projects.id] }),
 }));
 
 export const decisionsRelations = relations(decisions, ({ one }) => ({
@@ -548,5 +574,6 @@ export type ChangeRequest = typeof changeRequests.$inferSelect;
 export type DocPage = typeof docPages.$inferSelect;
 export type DocRevision = typeof docRevisions.$inferSelect;
 export type ProjectSystem = typeof systems.$inferSelect;
+export type ProjectUpdate = typeof projectUpdates.$inferSelect;
 export type TaskStatus = (typeof taskStatus.enumValues)[number];
 export type OpportunityStage = (typeof opportunityStage.enumValues)[number];
