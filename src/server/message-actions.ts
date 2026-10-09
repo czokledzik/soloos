@@ -267,3 +267,23 @@ export async function importTelegram(fd: FormData) {
     return { ...summary, imported: totals };
   });
 }
+
+// ---------- Email ----------
+
+/** Runs the IMAP sync now (Settings → Email). */
+export async function syncEmailNow() {
+  return run(async () => {
+    const { emailConfig, imapSource, runEmailSync } = await import("./email-sync");
+    const config = emailConfig();
+    if (!config) throw new ActionError("Email sync isn't configured: set IMAP_HOST, IMAP_USER and IMAP_PASSWORD");
+    let source;
+    try {
+      source = await imapSource(config);
+    } catch (e) {
+      throw new ActionError(`Can't connect to ${config.host}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    const result = await runEmailSync(config, source);
+    refreshAll();
+    return result;
+  });
+}

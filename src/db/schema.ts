@@ -4,6 +4,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   smallint,
@@ -423,6 +424,13 @@ export const systems = pgTable(
   },
   (t) => [index().on(t.projectId)],
 );
+
+/** Small bits of app state, e.g. how far the email sync got per mailbox. */
+export const appState = pgTable("app_state", {
+  key: text().primaryKey(),
+  value: jsonb().notNull(),
+  updatedAt: updatedAt(),
+});
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   contacts: many(contacts),

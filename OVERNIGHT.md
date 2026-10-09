@@ -32,3 +32,8 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
 - Fixed app-wide: forms wiped all input when the server returned a validation error (React 19 `<form action>` reset).
 - MCP server (PLAN §6.5) done: `/api/mcp`, 14 tools (8 read, 6 write, no deletes), OAuth 2.1 for claude.ai connectors
   (stateless signed tokens, consent page behind the normal login), `MCP_TOKEN` for Claude Code. See README → Claude (MCP).
+- Email via IMAP (PLAN §6.3) done: only mail involving known contact addresses, threaded by Message-ID/References,
+  quoted history stripped, dedupe by Message-ID, resumes by UID per mailbox (migration 0004 adds `app_state`).
+  Settings → Email → Sync now; `/api/cron/email-sync` for schedulers. **Not scheduled automatically**: Vercel Hobby
+  only allows daily crons, so the schedule is your call (see README → Messages).
+  Not tested against a real IMAP server (no credentials here); parsing/threading/sync logic is tested with raw emails.

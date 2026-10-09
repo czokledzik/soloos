@@ -73,6 +73,23 @@ The local dev database isn't backed up.
 Settings → Import: Clockify detailed-report CSV (time entries) and Linear CSV (issues → tasks).
 Preview first; re-importing the same file skips rows already imported.
 
+## Messages
+
+Conversations live in threads (one per email thread / chat) with participants mapped to contacts; client, lead and
+project timelines show them interleaved with logged conversations.
+
+- **Paste:** Messages → Paste conversation (or "Paste chat" on a client/lead/project). WhatsApp exports, Telegram
+  and Messenger copies and "Name: text" logs are split automatically; fix anything on screen before saving.
+  Logged conversations have a ✂ button to convert them the same way.
+- **Telegram:** Settings → Telegram chats, upload `result.json` from Telegram Desktop's JSON export.
+- **Email (IMAP):** set `IMAP_HOST` (Hostinger: `imap.hostinger.com`), `IMAP_USER`, `IMAP_PASSWORD`, optionally
+  `IMAP_MAILBOXES` (default `INBOX,INBOX.Sent`), `EMAIL_ME_ADDRESSES` (other addresses that are you) and
+  `IMAP_SINCE_DAYS` (first sync window, default 30). Only mail to/from a contact's email address is kept, replies are
+  threaded by Message-ID and nothing is imported twice. Run it from Settings → Email → Sync now, or on a schedule:
+  `GET /api/cron/email-sync` with `Authorization: Bearer $CRON_SECRET` (set `CRON_SECRET`, 16+ chars).
+  Vercel Cron sends that header itself; add `"crons": [{ "path": "/api/cron/email-sync", "schedule": "*/15 * * * *" }]`
+  to `vercel.json` on a plan that allows sub-daily crons (Hobby allows one run a day), or call it from any scheduler.
+
 ## Claude (MCP)
 
 SoloOS is an MCP server at `/api/mcp` (Streamable HTTP), so Claude can read and update it: search, client and
