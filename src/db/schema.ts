@@ -9,6 +9,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // Money is stored as integer minor units (grosze/cents).
@@ -246,6 +247,66 @@ export const runningTimer = pgTable("running_timer", {
   note: text().notNull().default(""),
 });
 
+// ---------- Messages ----------
+// A thread is one conversation on one channel (an email thread, a Telegram chat,
+// a group chat). Participants are the people in it as they appear in the source
+// (name + handle), each optionally mapped to a contact; one of them can be "me".
+
+export const threadSource = pgEnum("thread_source", ["paste", "telegram", "email"]);
+
+export const threads = pgTable(
+  "threads",
+  {
+    id: id(),
+    orgId: integer()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    opportunityId: integer().references(() => opportunities.id, { onDelete: "set null" }),
+    projectId: integer().references(() => projects.id, { onDelete: "set null" }),
+    channel: channel().notNull().default("other"),
+    title: text().notNull().default(""),
+    source: threadSource().notNull().default("paste"),
+    sourceKey: text().unique(), // e.g. "telegram:123456", "email:<root message-id>"
+    lastMessageAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.orgId, t.lastMessageAt), index().on(t.opportunityId), index().on(t.projectId)],
+);
+
+export const threadParticipants = pgTable(
+  "thread_participants",
+  {
+    id: id(),
+    threadId: integer()
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    handle: text(), // email address, Telegram user id/username; null for pasted text
+    contactId: integer().references(() => contacts.id, { onDelete: "set null" }),
+    isMe: boolean().notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [unique().on(t.threadId, t.name, t.handle).nullsNotDistinct(), index().on(t.contactId)],
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: id(),
+    threadId: integer()
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    participantId: integer().references(() => threadParticipants.id, { onDelete: "set null" }),
+    sentAt: timestamp({ withTimezone: true }).notNull(),
+    bodyMd: text().notNull().default(""),
+    sourceKey: text().unique(), // e.g. "telegram:123456:789", "email:<message-id>"
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.threadId, t.sentAt)],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   contacts: many(contacts),
   projects: many(projects),
@@ -299,6 +360,25 @@ export const runningTimerRelations = relations(runningTimer, ({ one }) => ({
   task: one(tasks, { fields: [runningTimer.taskId], references: [tasks.id] }),
 }));
 
+export const threadsRelations = relations(threads, ({ one, many }) => ({
+  org: one(organizations, { fields: [threads.orgId], references: [organizations.id] }),
+  opportunity: one(opportunities, { fields: [threads.opportunityId], references: [opportunities.id] }),
+  project: one(projects, { fields: [threads.projectId], references: [projects.id] }),
+  participants: many(threadParticipants),
+  messages: many(messages),
+}));
+
+export const threadParticipantsRelations = relations(threadParticipants, ({ one, many }) => ({
+  thread: one(threads, { fields: [threadParticipants.threadId], references: [threads.id] }),
+  contact: one(contacts, { fields: [threadParticipants.contactId], references: [contacts.id] }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  thread: one(threads, { fields: [messages.threadId], references: [threads.id] }),
+  participant: one(threadParticipants, { fields: [messages.participantId], references: [threadParticipants.id] }),
+}));
+
 export type Organization = typeof organizations.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
 export type Project = typeof projects.$inferSelect;
@@ -307,5 +387,8 @@ export type Interaction = typeof interactions.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type TimeEntry = typeof timeEntries.$inferSelect;
+export type Thread = typeof threads.$inferSelect;
+export type ThreadParticipant = typeof threadParticipants.$inferSelect;
+export type Message = typeof messages.$inferSelect;
 export type TaskStatus = (typeof taskStatus.enumValues)[number];
 export type OpportunityStage = (typeof opportunityStage.enumValues)[number];

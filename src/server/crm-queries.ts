@@ -1,5 +1,6 @@
 import "server-only";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, max, notInArray, or, sql } from "drizzle-orm";
+import { unionAll, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { startOfMonth, subDays } from "date-fns";
 import {
   contacts,
@@ -8,26 +9,37 @@ import {
   opportunities,
   organizations,
   projects,
+  threads,
   timeEntries,
 } from "@/db";
 import { toDateString } from "@/lib/format";
 
 const OPEN_STAGES = ["new", "contacted", "call", "proposal", "negotiating"] as const;
 
-/** Last interaction per org / opportunity, as subqueries. */
+const contactAt = (col: AnyPgColumn) => sql<Date | null>`${col}`.as("at");
+
+/** Last logged conversation or message per org / opportunity, as subqueries. */
 function lastContactByOrg() {
+  const all = unionAll(
+    db.select({ orgId: interactions.orgId, at: contactAt(interactions.occurredAt) }).from(interactions),
+    db.select({ orgId: threads.orgId, at: contactAt(threads.lastMessageAt) }).from(threads),
+  ).as("contact_org");
   return db
-    .select({ orgId: interactions.orgId, at: max(interactions.occurredAt).as("last_org_at") })
-    .from(interactions)
-    .groupBy(interactions.orgId)
+    .select({ orgId: all.orgId, at: max(all.at).as("last_org_at") })
+    .from(all)
+    .groupBy(all.orgId)
     .as("last_org");
 }
 
 function lastContactByOpportunity() {
+  const all = unionAll(
+    db.select({ oppId: interactions.opportunityId, at: contactAt(interactions.occurredAt) }).from(interactions),
+    db.select({ oppId: threads.opportunityId, at: contactAt(threads.lastMessageAt) }).from(threads),
+  ).as("contact_opp");
   return db
-    .select({ oppId: interactions.opportunityId, at: max(interactions.occurredAt).as("last_opp_at") })
-    .from(interactions)
-    .groupBy(interactions.opportunityId)
+    .select({ oppId: all.oppId, at: max(all.at).as("last_opp_at") })
+    .from(all)
+    .groupBy(all.oppId)
     .as("last_opp");
 }
 

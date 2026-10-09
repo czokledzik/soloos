@@ -18,6 +18,7 @@ import {
 } from "@/db";
 import { ActionError, currency, int, money, oneOf, reqStr, run, str } from "./form";
 import { refreshAll } from "./refresh";
+import { moveLeadThreadsToProject } from "./threads";
 
 // ---------- Organizations ----------
 
@@ -266,6 +267,7 @@ export async function convertOpportunityToProject(id: number) {
         .update(interactions)
         .set({ projectId: p.id })
         .where(and(eq(interactions.opportunityId, id), isNull(interactions.projectId)));
+      await moveLeadThreadsToProject(tx, id, p.id);
       return p.id;
     });
     await applyStage(id, "won");
