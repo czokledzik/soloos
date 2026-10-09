@@ -1,4 +1,4 @@
-import { parseMoney } from "@/lib/format";
+import { parseCurrency, parseMoney } from "@/lib/format";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
@@ -27,6 +27,15 @@ export function int(fd: FormData, key: string): number | null {
 
 export function money(fd: FormData, key: string): number | null {
   return parseMoney(fd.get(key));
+}
+
+/** Currency code, upper-cased; defaults to PLN when empty, rejects anything else. */
+export function currency(fd: FormData, key = "currency"): string {
+  const raw = str(fd, key);
+  if (raw == null) return "PLN";
+  const code = parseCurrency(raw);
+  if (!code) throw new ActionError(`"${raw}" isn't a currency code (use e.g. PLN, EUR, USD)`);
+  return code;
 }
 
 export function bool(fd: FormData, key: string): boolean {

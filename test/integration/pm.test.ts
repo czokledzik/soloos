@@ -218,3 +218,15 @@ describe("organizations", () => {
     expect(await db.select().from(organizations)).toEqual([]);
   });
 });
+
+describe("currency", () => {
+  it("upper-cases valid codes and rejects others", async () => {
+    const org = await makeOrg();
+    const id = ok(await createProject(form({ orgId: org.id, name: "EU job", currency: "eur" })));
+    expect((await db.query.projects.findFirst({ where: eq(projects.id, id) }))!.currency).toBe("EUR");
+    expect(await createProject(form({ orgId: org.id, name: "Bad", currency: "zł" }))).toEqual({
+      ok: false,
+      error: `"zł" isn't a currency code (use e.g. PLN, EUR, USD)`,
+    });
+  });
+});

@@ -17,7 +17,7 @@ import {
 } from "@/db";
 import { isBillableByDefault, resolveRate } from "@/lib/billing";
 import { parseDuration } from "@/lib/format";
-import { ActionError, int, money, oneOf, reqStr, run, str } from "./form";
+import { ActionError, currency, int, money, oneOf, reqStr, run, str } from "./form";
 import { refreshAll } from "./refresh";
 
 async function projectWithOrg(projectId: number) {
@@ -40,7 +40,7 @@ function projectValues(fd: FormData) {
     hourlyRate: money(fd, "hourlyRate"),
     fixedPrice: money(fd, "fixedPrice"),
     budgetHours: int(fd, "budgetHours"),
-    currency: str(fd, "currency") ?? "PLN",
+    currency: currency(fd),
     startDate: str(fd, "startDate"),
     dueDate: str(fd, "dueDate"),
   };

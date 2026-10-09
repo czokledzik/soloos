@@ -16,7 +16,7 @@ import {
   projects,
   type OpportunityStage,
 } from "@/db";
-import { ActionError, int, money, oneOf, reqStr, run, str } from "./form";
+import { ActionError, currency, int, money, oneOf, reqStr, run, str } from "./form";
 import { refreshAll } from "./refresh";
 
 // ---------- Organizations ----------
@@ -28,7 +28,7 @@ function orgValues(fd: FormData) {
     status: oneOf(fd, "status", orgStatus.enumValues) ?? "lead",
     website: str(fd, "website"),
     defaultRate: money(fd, "defaultRate"),
-    currency: str(fd, "currency") ?? "PLN",
+    currency: currency(fd),
   };
 }
 

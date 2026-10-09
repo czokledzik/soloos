@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatElapsed, formatMinutes, formatMoney, moneyInput, parseDuration, parseMoney } from "./format";
+import { formatElapsed, formatMinutes, formatMoney, moneyInput, parseCurrency, parseDuration, parseMoney } from "./format";
 
 describe("parseDuration", () => {
   it.each([
@@ -63,5 +63,17 @@ describe("formatting", () => {
     // Polish groups thousands only from five digits up.
     expect(formatMoney(123450).replace(/\s/g, " ")).toBe("1234,50 zł");
     expect(formatMoney(1234550).replace(/\s/g, " ")).toBe("12 345,50 zł");
+  });
+});
+
+describe("currencies", () => {
+  it("formats unknown currency codes without crashing", () => {
+    expect(formatMoney(150_00, "ZL").replace(/\s/g, " ")).toBe("150,00 ZL");
+  });
+
+  it("normalizes currency input", () => {
+    expect(parseCurrency(" eur ")).toBe("EUR");
+    expect(parseCurrency("zł")).toBeNull();
+    expect(parseCurrency("")).toBeNull();
   });
 });

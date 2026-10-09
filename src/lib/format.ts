@@ -26,7 +26,18 @@ export function formatElapsed(totalSec: number): string {
 /** Minor units → "1 234,50 zł" */
 export function formatMoney(minor: number | null | undefined, currency = "PLN"): string {
   if (minor == null) return "—";
-  return new Intl.NumberFormat("pl-PL", { style: "currency", currency }).format(minor / 100);
+  try {
+    return new Intl.NumberFormat("pl-PL", { style: "currency", currency }).format(minor / 100);
+  } catch {
+    // Not an ISO currency code: show the number with whatever was entered.
+    return `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2 }).format(minor / 100)} ${currency}`;
+  }
+}
+
+/** "pln" → "PLN"; anything that isn't a 3-letter code → null. */
+export function parseCurrency(input: string | null): string | null {
+  const s = input?.trim().toUpperCase();
+  return s && /^[A-Z]{3}$/.test(s) ? s : null;
 }
 
 /** "123.45" | "123,45" → 12345 minor units; empty → null */
