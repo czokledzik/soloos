@@ -43,6 +43,13 @@
       "when": 1791588256242,
       "tag": "0005_client_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791588605686,
+      "tag": "0006_ai_jobs",
+      "breakpoints": true
     }
   ]
 }

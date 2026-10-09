@@ -41,3 +41,9 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
 - Client portal (PLAN §6.7) done (migration 0005, additive): project → Portal tab turns on a `/p/<token>` link
   (32 random bytes, "New link" rotates it, "Turn off" kills it). Shows task progress, published updates and published
   doc pages (Mermaid with pan/zoom), never rates/hours/notes/messages; `noindex`; no AI anywhere near it.
+- In-app AI (PLAN §6.6) done (migration 0006 adds `ai_jobs`): thread "Summarize & extract", project "Draft the brief",
+  lead "Draft a reply". Suggestions only, each accepted by a click. Provider `api` (Anthropic SDK, claude-opus-5-5,
+  structured outputs, `fallbacks: "default"`) or `runner` (queue + `pnpm ai:runner` driving your Claude Code CLI with
+  no tools / no MCP, since prompts contain untrusted client text). **Not run against the real API or CLI** (no key here,
+  and I didn't spend your subscription): request shape, refusal/error handling, queue, schema validation and CLI output
+  parsing are tested with fakes; the browser test plays the runner over HTTP.

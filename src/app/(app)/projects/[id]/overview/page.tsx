@@ -9,19 +9,22 @@ import { OpenDialogButton } from "@/components/app/buttons";
 import { Timeline } from "@/components/app/timeline";
 import { getCrmPickers, listInteractions } from "@/server/crm-queries";
 import { listThreads } from "@/server/message-queries";
+import { BriefAiPanel } from "@/components/app/ai-panel";
+import { aiProvider, jobView } from "@/server/ai/run";
 import { getPickerData, getProject, listPayments } from "@/server/queries";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 
 export default async function ProjectOverviewPage({ params }: PageProps<"/projects/[id]/overview">) {
   const id = Number((await params).id);
-  const [project, payments, interactions, threads, crm, pickers] = await Promise.all([
+  const [project, payments, interactions, threads, crm, pickers, briefJob] = await Promise.all([
     getProject(id),
     listPayments(id),
     listInteractions({ projectId: id }),
     listThreads({ projectId: id }),
     getCrmPickers(),
     getPickerData(),
+    jobView("project_brief", id),
   ]);
   if (!project) notFound();
   const paid = payments.filter((p) => p.paidAt).reduce((s, p) => s + p.amount, 0);
@@ -63,6 +66,9 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           placeholder="What is this project, for whom, what does done look like? Keep it short: it's the first thing anyone (or an AI) reads."
           className="min-h-24"
         />
+        <div className="mt-2">
+          <BriefAiPanel projectId={id} job={briefJob} enabled={aiProvider() !== "off"} />
+        </div>
       </section>
       <div className="grid gap-6 lg:grid-cols-2">
         <section>

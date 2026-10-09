@@ -118,11 +118,14 @@ export function ThreadEditor({
   crm,
   projects,
   contacts,
+  ai,
 }: {
   thread: ThreadView;
   crm: CrmPickers;
   projects: PickerData["projects"];
   contacts: CrmPickers["contacts"];
+  /** "Ask Claude" panel, rendered by the page. */
+  ai?: React.ReactNode;
 }) {
   const router = useRouter();
   const { pending, exec } = useAction();
@@ -146,6 +149,7 @@ export function ThreadEditor({
       </section>
 
       <aside className="grid content-start gap-4">
+        {ai}
         <section className="rounded-xl border">
           <h2 className="border-b px-3 py-2 text-sm font-medium">People</h2>
           <div className="grid gap-3 p-3">

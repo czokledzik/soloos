@@ -446,6 +446,35 @@ export const systems = pgTable(
   (t) => [index().on(t.projectId)],
 );
 
+// ---------- AI ----------
+
+export const aiJobKind = pgEnum("ai_job_kind", ["thread_insights", "project_brief", "lead_reply"]);
+export const aiJobStatus = pgEnum("ai_job_status", ["queued", "running", "done", "failed"]);
+
+/**
+ * One AI request (a button press). Run right away through the API, or queued for
+ * a local Claude Code runner that polls for work. Results are suggestions the
+ * user accepts or ignores; nothing is applied automatically.
+ */
+export const aiJobs = pgTable(
+  "ai_jobs",
+  {
+    id: id(),
+    kind: aiJobKind().notNull(),
+    // What it's about, e.g. { threadId: 3 }; also used to find the latest job for a page.
+    subject: text().notNull(),
+    status: aiJobStatus().notNull().default("queued"),
+    provider: text().notNull(), // "api" | "runner"
+    prompt: text().notNull(),
+    result: jsonb(),
+    error: text(),
+    startedAt: timestamp({ withTimezone: true }),
+    finishedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.subject, t.createdAt), index().on(t.status, t.createdAt)],
+);
+
 /** Small bits of app state, e.g. how far the email sync got per mailbox. */
 export const appState = pgTable("app_state", {
   key: text().primaryKey(),
@@ -575,5 +604,6 @@ export type DocPage = typeof docPages.$inferSelect;
 export type DocRevision = typeof docRevisions.$inferSelect;
 export type ProjectSystem = typeof systems.$inferSelect;
 export type ProjectUpdate = typeof projectUpdates.$inferSelect;
+export type AiJob = typeof aiJobs.$inferSelect;
 export type TaskStatus = (typeof taskStatus.enumValues)[number];
 export type OpportunityStage = (typeof opportunityStage.enumValues)[number];

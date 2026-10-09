@@ -90,6 +90,19 @@ project timelines show them interleaved with logged conversations.
   Vercel Cron sends that header itself; add `"crons": [{ "path": "/api/cron/email-sync", "schedule": "*/15 * * * *" }]`
   to `vercel.json` on a plan that allows sub-daily crons (Hobby allows one run a day), or call it from any scheduler.
 
+## Claude in the app
+
+Buttons on a thread ("Summarize & extract": summary, decisions, scope changes, tasks, open questions, reply draft),
+on the project overview ("Draft the brief") and on a lead ("Draft a reply"). Claude only suggests; you log, propose,
+create or copy each item yourself. Two ways to run it (`AI_PROVIDER`):
+
+- `api` (default when `ANTHROPIC_API_KEY` is set): calls the Anthropic API directly, model `claude-opus-5-5`
+  (override with `AI_MODEL`), structured outputs, server-side fallback when a request is declined.
+- `runner`: jobs are queued and a machine of yours runs them through your own Claude Code CLI (your subscription).
+  Set `AI_RUNNER_TOKEN` (24+ chars) on the server and on that machine, then run
+  `SOLOOS_URL=https://<your-domain> AI_RUNNER_TOKEN=… pnpm ai:runner` there (keep it alive with launchd/systemd/tmux).
+  The CLI runs with no tools and no MCP servers in an empty temp directory, since prompts contain client messages.
+
 ## Client portal
 
 Project → Portal → Turn on gives a read-only link (`/p/<token>`) for the client: task progress, updates you publish,

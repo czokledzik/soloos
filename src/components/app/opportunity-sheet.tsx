@@ -27,10 +27,13 @@ export function OpportunitySheet({
   threads,
   crm,
   projects,
+  ai,
 }: {
   opp: OpportunityDetail | null;
   interactions: InteractionRow[];
   threads: ThreadView[];
+  /** "Ask Claude" panel for this lead, rendered by the page. */
+  ai?: React.ReactNode;
   crm: CrmPickers;
   projects: PickerData["projects"];
 }) {
@@ -56,6 +59,7 @@ export function OpportunitySheet({
             threads={threads}
             crm={crm}
             projects={projects}
+            ai={ai}
             onDeleted={close}
           />
         )}
@@ -70,11 +74,13 @@ function OpportunityPanel({
   threads,
   crm,
   projects,
+  ai,
   onDeleted,
 }: {
   opp: OpportunityDetail;
   interactions: InteractionRow[];
   threads: ThreadView[];
+  ai?: React.ReactNode;
   crm: CrmPickers;
   projects: PickerData["projects"];
   onDeleted: () => void;
@@ -207,6 +213,8 @@ function OpportunityPanel({
             )}
           </section>
         )}
+
+        {ai}
 
         <section>
           <h3 className="mb-2 text-sm font-medium">Conversations</h3>
