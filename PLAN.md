@@ -1,7 +1,7 @@
 # SoloOS: plan (v3)
 
 A single-user app for side-business work. Agency work stays in ClickUp.
-The MVP (project management, time tracking, light CRM) is done. **Current focus: hosting, then communication imports and project docs (section 6).**
+The MVP (project management, time tracking, light CRM) is done, and so is section 6 (built 2026-10-09/10, see OVERNIGHT.md). **Next: use it, then the "Also later" list.**
 
 ## 1. Stack (aligned with ofertownik)
 
@@ -118,17 +118,17 @@ Keep it separate for now.
 
 ## 6. Next (agreed 2026-09-29)
 1. ~~**Hosting**~~ (done 2026-09-29): Vercel + Neon (Frankfurt), password login, Europe/Warsaw timezone, migrations on production deploy, nightly backup of Neon to `soloos-backups` via GitHub Actions.
-2. **Messages model**: threads (email thread, Telegram chat, group chat) with individual messages, participants mapped to contacts (collaborators too), and a merged timeline by date across channels. Existing pasted conversations get converted.
-3. **Imports**: Telegram Desktop JSON export, email via IMAP (Hostinger) filtered to known contact addresses with a 15-minute sync, and a paste-and-fix screen that splits pasted text into editable messages. Dedupe by source message ID.
-4. **Project docs** (inspired by Wiegers, *Software Requirements Essentials*):
+2. ~~**Messages model**~~ (done 2026-10-10): threads (email thread, Telegram chat, group chat) with individual messages, participants mapped to contacts (collaborators too), and a merged timeline by date across channels. Existing pasted conversations get converted.
+3. ~~**Imports**~~ (done 2026-10-10; the email sync still needs a schedule): Telegram Desktop JSON export, email via IMAP (Hostinger) filtered to known contact addresses with a 15-minute sync, and a paste-and-fix screen that splits pasted text into editable messages. Dedupe by source message ID.
+4. ~~**Project docs**~~ (done 2026-10-10) (inspired by Wiegers, *Software Requirements Essentials*):
    - Project brief: short, edited in place, and the first thing AI reads.
    - Decision log: dated decisions with source (message, call) and who decided.
    - Scope baseline and change requests: requested by, impact on hours and price, status (proposed, approved, rejected). This matters most for fixed-price work.
    - Doc pages with revision history; Mermaid diagrams rendered with pan and zoom.
    - Systems list: links to repos, n8n workflows, ElevenLabs agents, Twilio, Baserow. Never credentials.
    - Code, n8n workflow JSON and agent configs stay in git; SoloOS links to them.
-5. **MCP server** so Claude (Claude.ai, mobile, Claude Code) can use SoloOS on the user's subscription: search, client and project context, screenshot import, process new messages, update the brief, decision log and diagrams.
-6. **In-app AI buttons** behind a provider setting: API key by default; optional local Claude Code runner (the user's own CLI on an always-on machine, polling a jobs table).
-7. **Client portal** (`/p/<token>`): progress, published updates and zoomable diagrams (read-only, always the latest version). The portal never triggers AI.
+5. ~~**MCP server**~~ (done 2026-10-10) so Claude (Claude.ai, mobile, Claude Code) can use SoloOS on the user's subscription: search, client and project context, screenshot import, process new messages, update the brief, decision log and diagrams.
+6. ~~**In-app AI buttons**~~ (done 2026-10-10) behind a provider setting: API key by default; optional local Claude Code runner (the user's own CLI on an always-on machine, polling a jobs table).
+7. ~~**Client portal**~~ (done 2026-10-10) (`/p/<token>`): progress, published updates and zoomable diagrams (read-only, always the latest version). The portal never triggers AI.
 
 Also later: ofertownik stats on opportunities, Useme/Bizky period export, read-only ClickUp sync, pgvector search if full-text search isn't enough, open-sourcing (settings instead of hardcoded PLN/timezone/contract types, Deploy button, Docker Compose).
