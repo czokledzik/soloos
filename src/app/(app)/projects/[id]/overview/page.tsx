@@ -4,6 +4,7 @@ import { Stat } from "@/components/app/page-header";
 import { effectiveRate } from "@/lib/billing";
 import { formatHours, formatMoney } from "@/lib/format";
 import { updateProjectNotes } from "@/server/actions";
+import { updateProjectBrief } from "@/server/doc-actions";
 import { OpenDialogButton } from "@/components/app/buttons";
 import { Timeline } from "@/components/app/timeline";
 import { getCrmPickers, listInteractions } from "@/server/crm-queries";
@@ -26,6 +27,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   const paid = payments.filter((p) => p.paidAt).reduce((s, p) => s + p.amount, 0);
   const budgetPct = project.budgetHours ? Math.round((project.totalMin / 60 / project.budgetHours) * 100) : null;
   const saveNotes = updateProjectNotes.bind(null, id);
+  const saveBrief = updateProjectBrief.bind(null, id);
 
   return (
     <div className="grid gap-6 px-6 pb-6">
@@ -53,6 +55,15 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
         )}
         {payments.length > 0 && <Stat label="Paid" value={formatMoney(paid, project.currency)} />}
       </div>
+      <section>
+        <h2 className="mb-2 text-sm font-medium">Brief</h2>
+        <NotesEditor
+          initial={project.briefMd}
+          save={saveBrief}
+          placeholder="What is this project, for whom, what does done look like? Keep it short: it's the first thing anyone (or an AI) reads."
+          className="min-h-24"
+        />
+      </section>
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-2 text-sm font-medium">Notes</h2>

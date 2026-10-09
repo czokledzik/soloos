@@ -24,6 +24,7 @@ import type { PickerData } from "@/server/queries";
 import { Field } from "./field";
 import { NativeSelect } from "./native-select";
 import { useAction } from "./use-action";
+import { submitForm } from "./submit-form";
 
 /** Chat bubbles: mine on the right, theirs on the left, with day separators. */
 export function MessageList({ messages, editable = false }: { messages: MessageView[]; editable?: boolean }) {
@@ -200,9 +201,9 @@ export function ThreadEditor({
           <h2 className="border-b px-3 py-2 text-sm font-medium">Thread</h2>
           <form
             className="grid gap-3 p-3"
-            action={async (fd) => {
+            onSubmit={submitForm(async (fd) => {
               await exec(() => updateThread(thread.id, fd), "Saved");
-            }}
+            })}
             key={`${thread.orgId}-${thread.opportunityId}-${thread.projectId}`}
           >
             <Field label="Title">

@@ -25,6 +25,7 @@ import type { PickerData } from "@/server/queries";
 import { Field } from "./field";
 import { NativeSelect } from "./native-select";
 import { useAction } from "./use-action";
+import { submitForm } from "./submit-form";
 
 type OnDone = (id?: number) => void;
 
@@ -82,12 +83,12 @@ export function ProjectForm({
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = project
           ? await exec(() => updateProject(project.id, fd), "Project saved")
           : await exec(() => createProject(fd), "Project created");
         if (res.ok) onDone?.(typeof res.data === "number" ? res.data : project?.id);
-      }}
+      })}
     >
       <Field label="Name">
         <Input name="name" required autoFocus defaultValue={project?.name} />
@@ -193,10 +194,10 @@ export function TaskCreateForm({
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = await exec(() => createTask(fd), "Task created");
         if (res.ok) onDone?.(res.data);
-      }}
+      })}
     >
       <Field label="Title">
         <Input name="title" required autoFocus />
@@ -266,12 +267,12 @@ export function TimeEntryForm({
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = entry
           ? await exec(() => updateTimeEntry(entry.id, fd), "Entry saved")
           : await exec(() => createTimeEntry(fd), "Time logged");
         if (res.ok) onDone?.(typeof res.data === "number" ? res.data : entry?.id);
-      }}
+      })}
     >
       <div className="grid grid-cols-2 gap-3">
         <Field label="Project">

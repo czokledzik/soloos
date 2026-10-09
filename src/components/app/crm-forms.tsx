@@ -15,6 +15,7 @@ import type { PickerData } from "@/server/queries";
 import { Field } from "./field";
 import { NativeSelect } from "./native-select";
 import { useAction } from "./use-action";
+import { submitForm } from "./submit-form";
 
 type OnDone = (id?: number) => void;
 
@@ -39,10 +40,10 @@ export function LeadForm({ crm, onDone }: { crm: CrmPickers; onDone?: OnDone }) 
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = await exec(() => createLead(fd), "Lead added");
         if (res.ok) onDone?.(res.data);
-      }}
+      })}
     >
       <Field label="Their post / request" hint="Paste the whole thing. The first line becomes the title unless you set one.">
         <Textarea name="originalPostMd" autoFocus className="min-h-32 text-sm" placeholder="Szukam kogoś do automatyzacji…" />
@@ -135,10 +136,10 @@ export function InteractionForm({
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = await exec(() => saveInteraction(interaction?.id ?? null, fd), interaction ? "Saved" : "Logged");
         if (res.ok) onDone?.();
-      }}
+      })}
     >
       <div className="grid grid-cols-3 gap-3">
         <Field label="Client">
@@ -230,10 +231,10 @@ export function OrgForm({ org, onDone }: { org?: Organization; onDone?: OnDone }
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = await exec(() => saveOrganization(org?.id ?? null, fd), org ? "Saved" : "Client created");
         if (res.ok) onDone?.(res.data);
-      }}
+      })}
     >
       <Field label="Name">
         <Input name="name" required autoFocus defaultValue={org?.name} />
@@ -278,10 +279,10 @@ export function ContactForm({ orgId, contact, onDone }: { orgId: number; contact
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = await exec(() => saveContact(contact?.id ?? null, fd), contact ? "Saved" : "Contact added");
         if (res.ok) onDone?.();
-      }}
+      })}
     >
       <input type="hidden" name="orgId" value={orgId} />
       <div className="grid grid-cols-2 gap-3">
@@ -324,10 +325,10 @@ export function OpportunityForm({ opp, onDone }: { opp: OpportunityDetail; onDon
   return (
     <form
       className="grid gap-3"
-      action={async (fd) => {
+      onSubmit={submitForm(async (fd) => {
         const res = await exec(() => updateOpportunity(opp.id, fd), "Saved");
         if (res.ok) onDone?.();
-      }}
+      })}
     >
       <Field label="Title">
         <Input name="title" required defaultValue={opp.title} />

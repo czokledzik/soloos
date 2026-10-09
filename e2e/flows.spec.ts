@@ -93,3 +93,16 @@ test("reports export CSV", async ({ page }) => {
   const csv = Buffer.concat(text).toString("utf8");
   expect(csv).toContain("Shop redesign");
 });
+
+test("a validation error keeps what was typed in the form", async ({ page }) => {
+  await page.goto("/projects");
+  await page.getByRole("button", { name: "New project" }).click();
+  const d = await dialog(page, "New project");
+  await d.getByLabel("Name", { exact: true }).fill("Typo project");
+  await d.getByLabel("New client name").fill("Someone");
+  await d.getByLabel("Currency").fill("zł");
+  await d.getByRole("button", { name: "Create project" }).click();
+  await expect(page.getByText(`"zł" isn't a currency code`)).toBeVisible();
+  await expect(d.getByLabel("Name", { exact: true })).toHaveValue("Typo project");
+  await expect(d.getByLabel("New client name")).toHaveValue("Someone");
+});
