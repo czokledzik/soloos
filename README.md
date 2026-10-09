@@ -52,7 +52,8 @@ The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWO
 
 - Production is the `main` branch on Vercel, with a Neon Postgres database (Frankfurt) connected through Vercel's Storage integration.
   The integration sets `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct, used for migrations).
-- Required env var: `APP_PASSWORD`. Optional: `APP_TIMEZONE` (default `Europe/Warsaw`), `NEXT_PUBLIC_OFERTOWNIK_URL`.
+- Required env var: `APP_PASSWORD`. Optional: `APP_TIMEZONE` (default `Europe/Warsaw`), `NEXT_PUBLIC_OFERTOWNIK_URL`,
+  `MCP_TOKEN` (static token for Claude Code), `APP_URL` (public URL, if the forwarded host headers aren't right).
 - `vercel.json` pins functions to `fra1` (next to the database) and builds with `scripts/vercel-build.sh`,
   which runs `pnpm db:migrate` on production deploys only. Preview deploys never touch the schema.
 - Dev and prod are separate databases: develop against local Postgres, ship schema changes as migration files.
@@ -72,6 +73,20 @@ The local dev database isn't backed up.
 Settings → Import: Clockify detailed-report CSV (time entries) and Linear CSV (issues → tasks).
 Preview first; re-importing the same file skips rows already imported.
 
+## Claude (MCP)
+
+SoloOS is an MCP server at `/api/mcp` (Streamable HTTP), so Claude can read and update it: search, client and
+project context, recent messages, importing chats (e.g. transcribed from a screenshot), the project brief,
+decision log, change requests (proposed only, you approve them), doc pages with Mermaid diagrams, and tasks.
+It can't delete anything, and it refuses credentials like the rest of the app.
+
+- **Claude.ai / Claude mobile / Claude Desktop:** Settings → Connectors → Add custom connector →
+  `https://<your-domain>/api/mcp`. You'll be sent to SoloOS to log in and approve. Uses OAuth (dynamic client
+  registration + PKCE); tokens are signed with `APP_PASSWORD`, so changing the password disconnects every app.
+- **Claude Code:** set `MCP_TOKEN` (32+ random characters, e.g. `openssl rand -hex 32`) in the environment, then
+  `claude mcp add --transport http soloos https://<your-domain>/api/mcp --header "Authorization: Bearer <MCP_TOKEN>"`.
+  Locally without `APP_PASSWORD` the endpoint is open: `claude mcp add --transport http soloos http://127.0.0.1:3000/api/mcp`.
+
 ## Keyboard
 
 - `⌘K` — command palette: jump anywhere, start a timer on any project/task, create task/project, log time
@@ -83,8 +98,9 @@ Set `NEXT_PUBLIC_OFERTOWNIK_URL` in `.env` to turn proposal slugs on leads into 
 
 ```
 src/db/schema.ts        tables, enums, relations
-src/server/actions.ts   all mutations (server actions)
-src/server/queries.ts   all reads
+src/server/actions.ts   PM/time mutations (server actions); crm-, message-, doc-actions.ts for the rest
+src/server/queries.ts   reads; crm-, message-, doc-queries.ts alongside
+src/server/mcp/         MCP server (tools) and the OAuth pieces for Claude connectors
 src/lib/                formatting, labels, billing rules
 src/components/app/     app components (timer, board, forms, …)
 src/components/ui/      shadcn primitives

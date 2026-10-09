@@ -8,7 +8,7 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
 3. [x] PLAN §6.2 Messages model: threads, messages, participants, merged timeline, convert pasted interactions
 4. [ ] PLAN §6.3 Imports: Telegram Desktop JSON, paste-and-fix splitter (IMAP sync: parser/sync logic only, no credentials here)
 5. [x] PLAN §6.4 Project docs: brief, decision log, change requests, doc pages with revisions + Mermaid, systems list
-6. [ ] PLAN §6.5 MCP server (if time)
+6. [x] PLAN §6.5 MCP server (if time)
 
 ## Log
 - Test setup done: `pnpm test` (115 unit + integration tests against real Postgres), `pnpm test:e2e` (15 Playwright tests incl. login gate).
@@ -30,3 +30,5 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
   decision log, totals incl. approved changes); Docs tab (markdown pages, live preview, Mermaid with pan/zoom,
   revision history + restore, systems list that refuses credentials).
 - Fixed app-wide: forms wiped all input when the server returned a validation error (React 19 `<form action>` reset).
+- MCP server (PLAN §6.5) done: `/api/mcp`, 14 tools (8 read, 6 write, no deletes), OAuth 2.1 for claude.ai connectors
+  (stateless signed tokens, consent page behind the normal login), `MCP_TOKEN` for Claude Code. See README → Claude (MCP).

@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, appPassword, verifySession } from "@/server/session";
 
+/** Endpoints that check their own credentials (MCP bearer tokens, OAuth). */
+const SELF_AUTHENTICATED = ["/api/mcp", "/oauth/register", "/oauth/token", "/.well-known/"];
+
 export function proxy(request: NextRequest) {
+  if (SELF_AUTHENTICATED.some((p) => request.nextUrl.pathname === p || (p.endsWith("/") && request.nextUrl.pathname.startsWith(p)))) {
+    return NextResponse.next();
+  }
   if (!appPassword()) {
     // Local dev runs without a password; a deployed app must never be open.
     if (process.env.NODE_ENV === "production") {
