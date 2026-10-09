@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { sql } from "./db";
 
-test.afterAll(() => sql.end());
 
 async function dialog(page: Page, title: string) {
   const d = page.getByRole("dialog", { name: title });

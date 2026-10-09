@@ -7,14 +7,18 @@ import { updateProjectNotes } from "@/server/actions";
 import { OpenDialogButton } from "@/components/app/buttons";
 import { Timeline } from "@/components/app/timeline";
 import { getCrmPickers, listInteractions } from "@/server/crm-queries";
+import { listThreads } from "@/server/message-queries";
 import { getPickerData, getProject, listPayments } from "@/server/queries";
+import { buttonVariants } from "@/components/ui/button";
+import Link from "next/link";
 
 export default async function ProjectOverviewPage({ params }: PageProps<"/projects/[id]/overview">) {
   const id = Number((await params).id);
-  const [project, payments, interactions, crm, pickers] = await Promise.all([
+  const [project, payments, interactions, threads, crm, pickers] = await Promise.all([
     getProject(id),
     listPayments(id),
     listInteractions({ projectId: id }),
+    listThreads({ projectId: id }),
     getCrmPickers(),
     getPickerData(),
   ]);
@@ -57,11 +61,19 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
         <section className="min-w-0">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-medium">Conversations</h2>
-            <OpenDialogButton kind="interaction" opts={{ orgId: project.orgId, projectId: id }} variant="ghost" size="xs">
-              Log
-            </OpenDialogButton>
+            <div className="flex gap-1">
+              <Link
+                href={`/messages/new?org=${project.orgId}&project=${id}`}
+                className={buttonVariants({ variant: "ghost", size: "xs" })}
+              >
+                Paste chat
+              </Link>
+              <OpenDialogButton kind="interaction" opts={{ orgId: project.orgId, projectId: id }} variant="ghost" size="xs">
+                Log
+              </OpenDialogButton>
+            </div>
           </div>
-          <Timeline interactions={interactions} crm={crm} projects={pickers.projects} showLinks={false} />
+          <Timeline interactions={interactions} threads={threads} crm={crm} projects={pickers.projects} showLinks={false} />
         </section>
       </div>
     </div>

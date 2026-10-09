@@ -1,5 +1,6 @@
 import { ImportPanel } from "@/components/app/import-panel";
 import { PageHeader } from "@/components/app/page-header";
+import { TelegramImport } from "@/components/app/telegram-import";
 import { getCrmPickers } from "@/server/crm-queries";
 
 export const metadata = { title: "Settings" };
@@ -12,7 +13,10 @@ export default async function SettingsPage() {
       <div className="grid gap-8 px-6 pb-6">
         <section>
           <h2 className="mb-3 text-sm font-medium">Import</h2>
-          <ImportPanel orgs={crm.orgs} />
+          <div className="grid gap-4">
+            <ImportPanel orgs={crm.orgs} />
+            <TelegramImport orgs={crm.orgs} />
+          </div>
         </section>
         <section className="max-w-2xl text-sm">
           <h2 className="mb-2 font-medium">Backups</h2>

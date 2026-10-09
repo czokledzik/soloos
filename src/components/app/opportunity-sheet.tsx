@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { BriefcaseIcon, ExternalLinkIcon, MessageSquarePlusIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { BriefcaseIcon, ExternalLinkIcon, MessageSquarePlusIcon, PencilIcon, Trash2Icon, ClipboardPasteIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,17 +17,20 @@ import type { PickerData } from "@/server/queries";
 import { OpportunityForm } from "./crm-forms";
 import { openGlobalDialog } from "./global-dialogs";
 import { Timeline } from "./timeline";
+import type { ThreadView } from "@/server/message-queries";
 import { useAction } from "./use-action";
 
 /** Side panel for a lead, driven by the ?opp= search param. */
 export function OpportunitySheet({
   opp,
   interactions,
+  threads,
   crm,
   projects,
 }: {
   opp: OpportunityDetail | null;
   interactions: InteractionRow[];
+  threads: ThreadView[];
   crm: CrmPickers;
   projects: PickerData["projects"];
 }) {
@@ -46,7 +49,15 @@ export function OpportunitySheet({
     <Sheet open={opp != null} onOpenChange={(o) => !o && close()}>
       <SheetContent className="w-full gap-0 sm:max-w-2xl">
         {opp && (
-          <OpportunityPanel key={opp.id} opp={opp} interactions={interactions} crm={crm} projects={projects} onDeleted={close} />
+          <OpportunityPanel
+            key={opp.id}
+            opp={opp}
+            interactions={interactions}
+            threads={threads}
+            crm={crm}
+            projects={projects}
+            onDeleted={close}
+          />
         )}
       </SheetContent>
     </Sheet>
@@ -56,12 +67,14 @@ export function OpportunitySheet({
 function OpportunityPanel({
   opp,
   interactions,
+  threads,
   crm,
   projects,
   onDeleted,
 }: {
   opp: OpportunityDetail;
   interactions: InteractionRow[];
+  threads: ThreadView[];
   crm: CrmPickers;
   projects: PickerData["projects"];
   onDeleted: () => void;
@@ -138,6 +151,12 @@ function OpportunityPanel({
           >
             <MessageSquarePlusIcon /> Log conversation
           </Button>
+          <Link
+            href={`/messages/new?org=${opp.orgId}&lead=${opp.id}`}
+            className={buttonVariants({ size: "sm", variant: "outline" })}
+          >
+            <ClipboardPasteIcon /> Paste chat
+          </Link>
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
             <PencilIcon /> Edit
           </Button>
@@ -191,7 +210,7 @@ function OpportunityPanel({
 
         <section>
           <h3 className="mb-2 text-sm font-medium">Conversations</h3>
-          <Timeline interactions={interactions} crm={crm} projects={projects} showLinks={false} />
+          <Timeline interactions={interactions} threads={threads} crm={crm} projects={projects} showLinks={false} />
         </section>
       </div>
 

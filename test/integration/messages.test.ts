@@ -167,6 +167,12 @@ describe("Telegram import", () => {
     expect(await db.select().from(threads)).toHaveLength(2);
   });
 
+  it("skips chats assigned to 0", async () => {
+    const org = await makeOrg();
+    const res = ok(await importTelegram(upload({ assign: JSON.stringify({ 3003: 0, 2002: org.id }) })));
+    expect(res.imported).toEqual({ threads: 1, messages: 4, duplicates: 0 });
+  });
+
   it("needs at least one assigned chat", async () => {
     expect(await importTelegram(upload({ assign: "{}" }))).toEqual({ ok: false, error: "Pick a client for at least one chat" });
   });

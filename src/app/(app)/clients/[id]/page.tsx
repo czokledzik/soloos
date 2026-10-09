@@ -12,16 +12,19 @@ import { OPPORTUNITY_STAGES, ORG_STATUSES, PROJECT_STATUSES, STAGE_DOT, labelOf 
 import { cn } from "@/lib/utils";
 import { updateOrganizationNotes } from "@/server/crm-actions";
 import { getCrmPickers, listInteractions, listOrgOpportunities } from "@/server/crm-queries";
+import { listThreads } from "@/server/message-queries";
 import { getOrganization, getPickerData, listProjects } from "@/server/queries";
+import { buttonVariants } from "@/components/ui/button";
 
 export default async function ClientPage({ params }: PageProps<"/clients/[id]">) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const [org, allProjects, opps, interactions, crm, pickers] = await Promise.all([
+  const [org, allProjects, opps, interactions, threads, crm, pickers] = await Promise.all([
     getOrganization(id),
     listProjects(),
     listOrgOpportunities(id),
     listInteractions({ orgId: id }),
+    listThreads({ orgId: id }),
     getCrmPickers(),
     getPickerData(),
   ]);
@@ -73,6 +76,9 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
             <OpenDialogButton kind="project" opts={{ orgId: id }} variant="outline">
               Project
             </OpenDialogButton>
+            <Link href={`/messages/new?org=${id}`} className={buttonVariants({ variant: "outline" })}>
+              Paste chat
+            </Link>
             <OpenDialogButton kind="interaction" opts={{ orgId: id }}>
               Log conversation
             </OpenDialogButton>
@@ -82,7 +88,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
       <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="min-w-0">
           <h2 className="mb-3 text-sm font-medium">Timeline</h2>
-          <Timeline interactions={interactions} events={events} crm={crm} projects={pickers.projects} />
+          <Timeline interactions={interactions} events={events} threads={threads} crm={crm} projects={pickers.projects} />
         </section>
         <aside className="grid min-w-0 grid-cols-1 content-start gap-4">
           <ContactsCard orgId={id} contacts={org.contacts} />

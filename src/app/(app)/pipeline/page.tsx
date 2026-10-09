@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { PipelineBoard } from "@/components/app/pipeline-board";
 import { formatMoney } from "@/lib/format";
 import { getCrmPickers, getOpportunity, listInteractions, listPipeline } from "@/server/crm-queries";
+import { listThreads } from "@/server/message-queries";
 import { getPickerData } from "@/server/queries";
 
 export const metadata = { title: "Pipeline" };
@@ -13,12 +14,13 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
   const sp = await searchParams;
   const oppId = Number(sp.opp);
   const hasOpp = Number.isInteger(oppId) && oppId > 0;
-  const [rows, crm, pickers, opp, interactions] = await Promise.all([
+  const [rows, crm, pickers, opp, interactions, threads] = await Promise.all([
     listPipeline(),
     getCrmPickers(),
     getPickerData(),
     hasOpp ? getOpportunity(oppId) : null,
     hasOpp ? listInteractions({ opportunityId: oppId }) : [],
+    hasOpp ? listThreads({ opportunityId: oppId }) : [],
   ]);
 
   const open = rows.filter((r) => r.stage !== "won" && r.stage !== "lost");
@@ -41,7 +43,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
         }
       />
       <PipelineBoard rows={rows} />
-      <OpportunitySheet opp={opp} interactions={interactions} crm={crm} projects={pickers.projects} />
+      <OpportunitySheet opp={opp} interactions={interactions} threads={threads} crm={crm} projects={pickers.projects} />
     </div>
   );
 }

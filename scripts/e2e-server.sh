@@ -3,4 +3,4 @@
 # shell, so Playwright's shutdown signal reaches it directly.
 set -euo pipefail
 pnpm build
-exec pnpm exec next start -H 127.0.0.1 -p "${PORT:-3100}"
+exec node_modules/.bin/next start -H 127.0.0.1 -p "${PORT:-3100}"

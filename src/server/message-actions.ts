@@ -167,7 +167,8 @@ export type TelegramSummary = {
   imported?: { threads: number; messages: number; duplicates: number };
 };
 
-const telegramChoice = z.record(z.string(), z.number().int().positive());
+/** chat id → org id; 0 means skip. */
+const telegramChoice = z.record(z.string(), z.number().int().nonnegative());
 
 async function readJson(fd: FormData) {
   const file = fd.get("file");

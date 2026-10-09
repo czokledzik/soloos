@@ -40,6 +40,7 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/login`,
     env: { ...env, PORT: String(PORT) },
     timeout: 300_000,
-    reuseExistingServer: !process.env.CI,
+    // Always start fresh: a leftover server would serve an old build.
+    reuseExistingServer: false,
   },
 });

@@ -8,6 +8,7 @@ import {
   SparklesIcon,
   BriefcaseIcon,
   CircleDotIcon,
+  ClipboardPasteIcon,
   ClockIcon,
   PlayIcon,
   PlusIcon,
@@ -92,6 +93,9 @@ export function CommandPalette({
             </CommandItem>
             <CommandItem onSelect={() => run(() => openGlobalDialog("interaction"))}>
               <MessageSquarePlusIcon /> Log conversation
+            </CommandItem>
+            <CommandItem onSelect={() => run(() => router.push("/messages/new"))}>
+              <ClipboardPasteIcon /> Paste chat messages
             </CommandItem>
             <CommandItem onSelect={() => run(() => openGlobalDialog("project"))}>
               <PlusIcon /> New project
