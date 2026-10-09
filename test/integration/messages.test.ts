@@ -82,6 +82,15 @@ describe("paste and fix", () => {
     expect((await getThread(id))!.messages).toHaveLength(4);
   });
 
+  it("appending to a missing thread fails, and appends always use the thread's client", async () => {
+    const org = await makeOrg();
+    const other = await makeOrg({ name: "Other" });
+    expect(await savePastedThread(pasted(org.id, { threadId: 9999 }))).toEqual({ ok: false, error: "Thread not found" });
+    const id = ok(await savePastedThread(pasted(org.id)));
+    ok(await savePastedThread(pasted(other.id, { threadId: id })));
+    expect((await getThread(id))!.orgId).toBe(org.id);
+  });
+
   it("an outgoing message moves a new lead to contacted", async () => {
     const leadId = ok(await createLead(form({ companyName: "Bakery", title: "Shop" })));
     const lead = (await db.query.opportunities.findFirst({ where: eq(opportunities.id, leadId) }))!;

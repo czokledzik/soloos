@@ -1,4 +1,5 @@
 import "server-only";
+import { ActionError } from "./form";
 import { and, eq, inArray, isNull, max, sql } from "drizzle-orm";
 import {
   contacts,
@@ -35,6 +36,12 @@ export type IncomingThread = {
  */
 export async function saveThread(tx: Tx, input: IncomingThread) {
   let threadId = input.threadId ?? null;
+  if (threadId != null) {
+    const existing = await tx.query.threads.findFirst({ where: eq(threads.id, threadId) });
+    if (!existing) throw new ActionError("Thread not found");
+    // Appending: the thread decides which client it belongs to.
+    input = { ...input, orgId: existing.orgId };
+  }
   if (threadId == null && input.sourceKey) {
     const existing = await tx.query.threads.findFirst({ where: eq(threads.sourceKey, input.sourceKey) });
     threadId = existing?.id ?? null;

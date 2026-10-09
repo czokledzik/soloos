@@ -22,3 +22,9 @@ test("API-style requests without a session are rejected", async ({ browser }) =>
   expect(res.status()).toBe(401);
   await ctx.close();
 });
+
+test("pages can't be framed", async ({ request }) => {
+  const res = await request.get("/login");
+  expect(res.headers()["x-frame-options"]).toBe("DENY");
+  expect(res.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+});
