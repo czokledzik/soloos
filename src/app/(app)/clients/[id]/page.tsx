@@ -76,7 +76,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
             <OpenDialogButton kind="project" opts={{ orgId: id }} variant="outline">
               Project
             </OpenDialogButton>
-            <Link href={`/messages/new?org=${id}`} className={buttonVariants({ variant: "outline" })}>
+            <Link href={`/messages/new?org=${id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
               Paste chat
             </Link>
             <OpenDialogButton kind="interaction" opts={{ orgId: id }}>

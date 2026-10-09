@@ -5,7 +5,7 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
 ## Plan
 1. [x] Test setup: Vitest (unit + integration against a real Postgres `soloos_test`), Playwright e2e smoke
 2. [x] Tests for lib, importers, server actions (timer rules, billing, CRM), fix bugs found
-3. [ ] PLAN §6.2 Messages model: threads, messages, participants, merged timeline, convert pasted interactions
+3. [x] PLAN §6.2 Messages model: threads, messages, participants, merged timeline, convert pasted interactions
 4. [ ] PLAN §6.3 Imports: Telegram Desktop JSON, paste-and-fix splitter (IMAP sync: parser/sync logic only, no credentials here)
 5. [ ] PLAN §6.4 Project docs: brief, decision log, change requests, doc pages with revisions + Mermaid, systems list
 6. [ ] PLAN §6.5 MCP server (if time)
@@ -18,3 +18,11 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
   - Re-saving a done task reset its completion time.
   - Login `?next=` open redirect via `/\evil.com`.
   - Free-text currency like "zł" would crash any page rendering money; now validated (3-letter code) and formatting falls back safely.
+- Messages (PLAN §6.2/6.3) done: `threads` / `thread_participants` / `messages` (migration 0002, additive only).
+  - /messages (list + full-text-ish search), /messages/new (paste and fix), /messages/[id] (thread page).
+  - Paste splitter recognizes WhatsApp exports, Telegram Desktop copies, Messenger copies, "Name: text" logs.
+  - Logged conversations get a ✂ "Split into messages" button that converts them (the interaction is replaced).
+  - Telegram Desktop JSON import in Settings: preview, client per chat (auto-suggested from contacts), dedupe by message id.
+  - Client/lead/project timelines show thread activity per day, interleaved with conversations and events.
+  - Decision: existing interactions are NOT bulk-migrated (they're also used for call/meeting notes); convert per item instead.
+- Also fixed: link-styled buttons (`buttonVariants` on `<Link>`) lost their outline border app-wide.

@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CHANNELS } from "@/lib/labels";
+import { linkify } from "@/lib/linkify";
 import { cn } from "@/lib/utils";
 import type { CrmPickers } from "@/server/crm-queries";
 import {
@@ -78,7 +79,15 @@ function Bubble({ message: m, showSender, editable }: { message: MessageView; sh
               m.isMe ? "bg-primary text-primary-foreground" : "bg-muted",
             )}
           >
-            {m.bodyMd}
+            {linkify(m.bodyMd).map((part, i) =>
+              part.href ? (
+                <a key={i} href={part.href} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                  {part.text}
+                </a>
+              ) : (
+                part.text
+              ),
+            )}
           </div>
         )}
         <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">{format(m.sentAt, "HH:mm")}</span>
