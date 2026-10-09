@@ -120,6 +120,11 @@ export const projects = pgTable(
     startDate: date(),
     dueDate: date(),
     notesMd: text().notNull().default(""),
+    // Short "what is this project" summary: the first thing anyone (or an AI) reads.
+    briefMd: text().notNull().default(""),
+    // Agreed scope for fixed-price work; change requests are measured against it.
+    scopeMd: text().notNull().default(""),
+    scopeBaselinedAt: timestamp({ withTimezone: true }),
     archivedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -307,6 +312,118 @@ export const messages = pgTable(
   (t) => [index().on(t.threadId, t.sentAt)],
 );
 
+// ---------- Project docs ----------
+
+export const changeRequestStatus = pgEnum("change_request_status", ["proposed", "approved", "rejected"]);
+export const systemKind = pgEnum("system_kind", [
+  "repo",
+  "n8n",
+  "elevenlabs",
+  "twilio",
+  "baserow",
+  "vercel",
+  "database",
+  "doc",
+  "other",
+]);
+
+/** Dated decisions with where they came from and who made them. */
+export const decisions = pgTable(
+  "decisions",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    decidedOn: date().notNull(),
+    title: text().notNull(),
+    detailsMd: text().notNull().default(""),
+    decidedBy: text(), // free text: "Anna (client)", "me", "both"
+    sourceMessageId: integer().references(() => messages.id, { onDelete: "set null" }),
+    sourceInteractionId: integer().references(() => interactions.id, { onDelete: "set null" }),
+    sourceNote: text(), // "call 3 Oct", link, …
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId, t.decidedOn)],
+);
+
+/** Requested changes to the agreed scope, with their effect on hours and price. */
+export const changeRequests = pgTable(
+  "change_requests",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    detailsMd: text().notNull().default(""),
+    requestedBy: text(),
+    requestedOn: date().notNull(),
+    hoursImpactMin: integer(), // + more work, - less
+    priceImpact: integer(), // minor units, in the project's currency
+    status: changeRequestStatus().notNull().default("proposed"),
+    decidedOn: date(),
+    sourceMessageId: integer().references(() => messages.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId)],
+);
+
+/** Free-form project documents (markdown, may contain Mermaid diagrams). */
+export const docPages = pgTable(
+  "doc_pages",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    bodyMd: text().notNull().default(""),
+    sortOrder: integer().notNull().default(0),
+    archivedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId)],
+);
+
+/** Every saved version of a doc page (the latest is also on doc_pages). */
+export const docRevisions = pgTable(
+  "doc_revisions",
+  {
+    id: id(),
+    pageId: integer()
+      .notNull()
+      .references(() => docPages.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    bodyMd: text().notNull(),
+    note: text(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.pageId, t.createdAt)],
+);
+
+/** Links to the systems a project runs on. Never credentials. */
+export const systems = pgTable(
+  "systems",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    kind: systemKind().notNull().default("other"),
+    name: text().notNull(),
+    url: text(),
+    notes: text().notNull().default(""),
+    sortOrder: integer().notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId)],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   contacts: many(contacts),
   projects: many(projects),
@@ -323,6 +440,34 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   tasks: many(tasks),
   payments: many(payments),
   timeEntries: many(timeEntries),
+  decisions: many(decisions),
+  changeRequests: many(changeRequests),
+  docPages: many(docPages),
+  systems: many(systems),
+}));
+
+export const decisionsRelations = relations(decisions, ({ one }) => ({
+  project: one(projects, { fields: [decisions.projectId], references: [projects.id] }),
+  sourceMessage: one(messages, { fields: [decisions.sourceMessageId], references: [messages.id] }),
+  sourceInteraction: one(interactions, { fields: [decisions.sourceInteractionId], references: [interactions.id] }),
+}));
+
+export const changeRequestsRelations = relations(changeRequests, ({ one }) => ({
+  project: one(projects, { fields: [changeRequests.projectId], references: [projects.id] }),
+  sourceMessage: one(messages, { fields: [changeRequests.sourceMessageId], references: [messages.id] }),
+}));
+
+export const docPagesRelations = relations(docPages, ({ one, many }) => ({
+  project: one(projects, { fields: [docPages.projectId], references: [projects.id] }),
+  revisions: many(docRevisions),
+}));
+
+export const docRevisionsRelations = relations(docRevisions, ({ one }) => ({
+  page: one(docPages, { fields: [docRevisions.pageId], references: [docPages.id] }),
+}));
+
+export const systemsRelations = relations(systems, ({ one }) => ({
+  project: one(projects, { fields: [systems.projectId], references: [projects.id] }),
 }));
 
 export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
@@ -390,5 +535,10 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type Thread = typeof threads.$inferSelect;
 export type ThreadParticipant = typeof threadParticipants.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type Decision = typeof decisions.$inferSelect;
+export type ChangeRequest = typeof changeRequests.$inferSelect;
+export type DocPage = typeof docPages.$inferSelect;
+export type DocRevision = typeof docRevisions.$inferSelect;
+export type ProjectSystem = typeof systems.$inferSelect;
 export type TaskStatus = (typeof taskStatus.enumValues)[number];
 export type OpportunityStage = (typeof opportunityStage.enumValues)[number];
