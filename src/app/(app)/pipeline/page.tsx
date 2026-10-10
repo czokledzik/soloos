@@ -10,6 +10,9 @@ import { LeadAiPanel } from "@/components/app/ai-panel";
 import { aiProvider, jobView } from "@/server/ai/run";
 import { getPickerData } from "@/server/queries";
 
+// "Ask Claude" runs as a server action of this page and can take a while.
+export const maxDuration = 300;
+
 export const metadata = { title: "Pipeline" };
 
 export default async function PipelinePage({ searchParams }: PageProps<"/pipeline">) {

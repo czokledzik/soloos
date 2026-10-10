@@ -9,6 +9,9 @@ import { getCrmPickers } from "@/server/crm-queries";
 import { getThread } from "@/server/message-queries";
 import { getPickerData } from "@/server/queries";
 
+// "Ask Claude" runs as a server action of this page and can take a while.
+export const maxDuration = 300;
+
 export default async function ThreadPage({ params }: PageProps<"/messages/[id]">) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();

@@ -15,6 +15,9 @@ import { getPickerData, getProject, listPayments } from "@/server/queries";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 
+// "Ask Claude" runs as a server action of this page and can take a while.
+export const maxDuration = 300;
+
 export default async function ProjectOverviewPage({ params }: PageProps<"/projects/[id]/overview">) {
   const id = Number((await params).id);
   const [project, payments, interactions, threads, crm, pickers, briefJob] = await Promise.all([
