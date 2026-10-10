@@ -1,19 +1,16 @@
 import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { format } from "date-fns";
-import { and, asc, desc, eq, gte, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull } from "drizzle-orm";
 import { z } from "zod";
 import {
   channel,
-  contacts,
   db,
-  decisions,
   docPages,
   messages,
   opportunities,
   organizations,
   projects,
-  tasks,
   threadParticipants,
   threads,
 } from "@/db";
@@ -26,6 +23,7 @@ import { savePastedThread } from "@/server/message-actions";
 import { getThread, listThreads } from "@/server/message-queries";
 import { getOrganization, getProject, listPayments, listProjectTasks, listProjects } from "@/server/queries";
 import { scopeTotals } from "@/lib/scope";
+import { searchAll, snippet } from "@/server/search-queries";
 
 const INSTRUCTIONS = `SoloOS is the user's personal ops app for freelance work: clients, leads, projects, tasks, time, payments, messages and project docs.
 Money values are in minor units (grosze/cents) unless a field says otherwise; durations are minutes.
@@ -48,7 +46,6 @@ function fd(values: Record<string, string | number | null | undefined>) {
   return f;
 }
 
-const like = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 const day = (d: Date | null) => (d ? format(d, "yyyy-MM-dd HH:mm") : null);
 const id = z.number().int().positive();
 
@@ -63,39 +60,17 @@ export function createMcpServer() {
     "search",
     {
       title: "Search SoloOS",
-      description: "Search clients, contacts, projects, tasks, leads, messages, decisions and doc pages by text.",
+      description:
+        "Search clients, contacts, projects, tasks, leads, messages, logged conversations, decisions and doc pages by text.",
       inputSchema: { query: z.string().min(2).describe("Words to look for") },
       annotations: read,
     },
     async ({ query }) => {
-      const q = like(query.trim());
-      const [orgs, people, projs, taskRows, leads, msgs, decs, pages] = await Promise.all([
-        db.select({ id: organizations.id, name: organizations.name, status: organizations.status }).from(organizations)
-          .where(and(isNull(organizations.archivedAt), ilike(organizations.name, q))).limit(10),
-        db.select({ id: contacts.id, name: contacts.name, clientId: contacts.orgId }).from(contacts)
-          .where(or(ilike(contacts.name, q), sql`array_to_string(${contacts.emails}, ' ') ilike ${q}`)).limit(10),
-        db.select({ id: projects.id, name: projects.name, status: projects.status, clientId: projects.orgId }).from(projects)
-          .where(and(isNull(projects.archivedAt), or(ilike(projects.name, q), ilike(projects.briefMd, q), ilike(projects.notesMd, q)))).limit(10),
-        db.select({ id: tasks.id, title: tasks.title, status: tasks.status, projectId: tasks.projectId }).from(tasks)
-          .where(or(ilike(tasks.title, q), ilike(tasks.bodyMd, q))).orderBy(desc(tasks.updatedAt)).limit(10),
-        db.select({ id: opportunities.id, title: opportunities.title, stage: opportunities.stage, clientId: opportunities.orgId }).from(opportunities)
-          .where(or(ilike(opportunities.title, q), ilike(opportunities.originalPostMd, q))).limit(10),
-        db.select({ id: messages.id, threadId: messages.threadId, sentAt: messages.sentAt, body: messages.bodyMd }).from(messages)
-          .where(ilike(messages.bodyMd, q)).orderBy(desc(messages.sentAt)).limit(15),
-        db.select({ id: decisions.id, title: decisions.title, projectId: decisions.projectId, decidedOn: decisions.decidedOn }).from(decisions)
-          .where(or(ilike(decisions.title, q), ilike(decisions.detailsMd, q))).limit(10),
-        db.select({ id: docPages.id, title: docPages.title, projectId: docPages.projectId }).from(docPages)
-          .where(and(isNull(docPages.archivedAt), or(ilike(docPages.title, q), ilike(docPages.bodyMd, q)))).limit(10),
-      ]);
+      const r = await searchAll(query);
       return text({
-        clients: orgs,
-        contacts: people,
-        projects: projs,
-        tasks: taskRows,
-        leads: leads,
-        messages: msgs.map((m) => ({ ...m, sentAt: day(m.sentAt), body: m.body.slice(0, 300) })),
-        decisions: decs,
-        docPages: pages,
+        ...r,
+        messages: r.messages.map((m) => ({ ...m, sentAt: day(m.sentAt), body: snippet(m.body, query, 150) })),
+        conversations: r.conversations.map((c) => ({ ...c, occurredAt: day(c.occurredAt), body: snippet(c.body, query, 150) })),
       });
     },
   );

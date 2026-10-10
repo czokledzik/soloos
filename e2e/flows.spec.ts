@@ -106,3 +106,12 @@ test("a validation error keeps what was typed in the form", async ({ page }) => 
   await expect(d.getByLabel("Name", { exact: true })).toHaveValue("Typo project");
   await expect(d.getByLabel("New client name")).toHaveValue("Someone");
 });
+
+test("⌘K hands off to full search", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByRole("dialog").getByRole("combobox").fill("redesign");
+  await page.getByText("Search messages, docs and notes for “redesign”").click();
+  await expect(page).toHaveURL(/\/search\?q=redesign/);
+  await expect(page.getByRole("link", { name: "Shop redesign" })).toBeVisible();
+});

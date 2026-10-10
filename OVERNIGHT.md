@@ -50,3 +50,5 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
 - Telegram import reworked: `result.json` is parsed in the browser and only chosen chats are sent, 1000 messages per
   request (Vercel caps request bodies at ~4.5 MB; full exports are much bigger). Note: the existing Clockify/Linear
   CSV upload has the same cap on Vercel despite `bodySizeLimit: 20mb`; fine for normal exports, not changed.
+- Extra: `/search` (clients, contacts, projects, tasks, leads, messages, logged conversations, decisions, docs) with a
+  "Search everything" entry at the bottom of ⌘K; the MCP `search` tool uses the same query.
