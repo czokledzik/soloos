@@ -48,6 +48,8 @@ The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWO
   every run. First time: `pnpm exec playwright install chromium` (add `--with-deps` on Linux).
   The flow tests in `e2e/flows.spec.ts` build on each other and run in order.
 
+GitHub Actions runs all of the above on every pull request (`.github/workflows/ci.yml`), with its own Postgres.
+
 ## Deploying (Vercel + Neon)
 
 - Production is the `main` branch on Vercel, with a Neon Postgres database (Frankfurt) connected through Vercel's Storage integration.
