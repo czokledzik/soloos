@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   channel,
@@ -13,7 +13,6 @@ import {
 } from "@/db";
 import { ActionError, int, oneOf, run, str } from "./form";
 import { refreshAll } from "./refresh";
-import { parseTelegramExport } from "./telegram";
 import { markLeadContacted, saveThread, touchThread } from "./threads";
 
 // ---------- Paste and fix ----------
@@ -146,59 +145,31 @@ export async function deleteMessage(id: number) {
 }
 
 // ---------- Telegram import ----------
+// The export is parsed in the browser (src/lib/telegram.ts): full exports are far
+// bigger than a serverless request body. Only the chosen chats are sent, in chunks.
 
-export type TelegramPreviewChat = {
-  id: number;
-  name: string;
-  type: string;
-  messages: number;
-  from: string;
-  to: string;
-  participants: { handle: string; name: string; count: number }[];
-  suggestedOrgId: number | null;
-  alreadyImported: number;
-};
+export type TelegramChatInfo = { id: number; participants: { handle: string; name: string }[] };
+export type TelegramPreview = Record<string, { suggestedOrgId: number | null; alreadyImported: number }>;
 
-export type TelegramSummary = {
-  dryRun: boolean;
-  meId: string | null;
-  errors: string[];
-  chats: TelegramPreviewChat[];
-  imported?: { threads: number; messages: number; duplicates: number };
-};
-
-/** chat id → org id; 0 means skip. */
-const telegramChoice = z.record(z.string(), z.number().int().nonnegative());
-
-async function readJson(fd: FormData) {
-  const file = fd.get("file");
-  if (!(file instanceof File) || file.size === 0) throw new ActionError("Choose the result.json file");
-  return file.text();
-}
-
-/**
- * Telegram Desktop JSON import. A dry run lists the chats with a suggested client
- * for each; the real run imports the chats the user assigned (`assign` = JSON of
- * chat id → org id), as one thread per chat.
- */
-export async function importTelegram(fd: FormData) {
-  return run(async (): Promise<TelegramSummary> => {
-    const dryRun = str(fd, "dryRun") === "1";
-    const parsed = parseTelegramExport(await readJson(fd));
-    const meId = str(fd, "meId") ?? parsed.meId;
-
+/** For each chat: a client guessed from contacts (name or Telegram handle), and how many messages are already in. */
+export async function telegramPreview(chats: TelegramChatInfo[], meId: string | null) {
+  return run(async (): Promise<TelegramPreview> => {
+    const list = z
+      .array(z.object({ id: z.number(), participants: z.array(z.object({ handle: z.string(), name: z.string() })).max(500) }))
+      .max(2000)
+      .parse(chats);
     const allContacts = await db.query.contacts.findMany();
-    const orgs = await db.select({ id: organizations.id }).from(organizations);
-    const orgIds = new Set(orgs.map((o) => o.id));
-    const existing = new Map(
-      (await db.select({ key: threads.sourceKey, id: threads.id }).from(threads)).map((t) => [t.key, t.id]),
-    );
-
-    const counts = new Map<number, number>();
-    for (const [key, id] of existing) if (key?.startsWith("telegram:")) counts.set(Number(key.slice(9)), id);
-
-    const chats: TelegramPreviewChat[] = [];
-    for (const c of parsed.chats) {
+    const keys = list.map((c) => `telegram:${c.id}`);
+    const counts = keys.length
+      ? await db
+          .select({ key: threads.sourceKey, count: sql<number>`count(${messages.id})::int` })
+          .from(threads)
+          .leftJoin(messages, eq(messages.threadId, threads.id))
+          .where(inArray(threads.sourceKey, keys))
+          .groupBy(threads.sourceKey)
+      : [];
+    const out: TelegramPreview = {};
+    for (const c of list) {
       const others = c.participants.filter((p) => p.handle !== meId);
       const match = allContacts.find((ct) =>
         others.some(
@@ -207,64 +178,64 @@ export async function importTelegram(fd: FormData) {
             (ct.telegram && ct.telegram.replace(/^@/, "").toLowerCase() === p.handle.toLowerCase()),
         ),
       );
-      const threadId = counts.get(c.id);
-      const already = threadId
-        ? (await db.select({ id: messages.id }).from(messages).where(eq(messages.threadId, threadId))).length
-        : 0;
-      chats.push({
-        id: c.id,
-        name: c.name,
-        type: c.type,
-        messages: c.messages.length,
-        from: c.messages[0].sentAt.toISOString(),
-        to: c.messages.at(-1)!.sentAt.toISOString(),
-        participants: c.participants,
+      out[c.id] = {
         suggestedOrgId: match?.orgId ?? null,
-        alreadyImported: already,
-      });
+        alreadyImported: counts.find((r) => r.key === `telegram:${c.id}`)?.count ?? 0,
+      };
     }
-    chats.sort((a, b) => b.to.localeCompare(a.to));
-    const summary: TelegramSummary = { dryRun, meId, errors: parsed.errors, chats };
-    if (dryRun) return summary;
+    return out;
+  });
+}
 
-    let assign: Record<string, number>;
-    try {
-      assign = telegramChoice.parse(JSON.parse(str(fd, "assign") ?? "{}"));
-    } catch {
-      throw new ActionError("Pick a client for the chats to import");
-    }
-    const picked = parsed.chats.filter((c) => assign[String(c.id)] && orgIds.has(assign[String(c.id)]));
-    if (picked.length === 0) throw new ActionError("Pick a client for at least one chat");
+const telegramChunk = z.object({
+  chatId: z.number().int(),
+  chatName: z.string().max(300),
+  orgId: z.number().int().positive(),
+  meId: z.string().nullable(),
+  participants: z.array(z.object({ handle: z.string().max(100), name: z.string().max(300) })).max(500),
+  messages: z
+    .array(z.object({ id: z.number().int(), fromId: z.string().max(100), sentAt: z.string(), body: z.string().max(100_000) }))
+    .max(1000),
+});
+export type TelegramChunk = z.infer<typeof telegramChunk>;
 
-    const totals = { threads: 0, messages: 0, duplicates: 0 };
-    await db.transaction(async (tx) => {
-      for (const c of picked) {
-        const res = await saveThread(tx, {
-          orgId: assign[String(c.id)],
-          channel: "telegram",
-          title: c.name,
-          source: "telegram",
-          sourceKey: `telegram:${c.id}`,
-          participants: c.participants.map((p) => ({
-            key: p.handle,
-            name: p.name,
-            handle: `telegram:${p.handle}`,
-            isMe: p.handle === meId,
-          })),
-          messages: c.messages.map((m) => ({
-            participantKey: m.fromId,
-            sentAt: m.sentAt,
-            body: m.body,
-            sourceKey: `telegram:${c.id}:${m.id}`,
-          })),
-        });
-        if (res.created) totals.threads++;
-        totals.messages += res.added;
-        totals.duplicates += res.duplicates;
-      }
-    });
+/** Imports one chunk of one chat as (part of) its thread; re-sending a chunk adds nothing. */
+export async function importTelegramChunk(input: TelegramChunk) {
+  return run(async () => {
+    const parsed = telegramChunk.safeParse(input);
+    if (!parsed.success) throw new ActionError("That chat couldn't be read");
+    const c = parsed.data;
+    const org = await db.query.organizations.findFirst({ where: eq(organizations.id, c.orgId) });
+    if (!org) throw new ActionError("Client not found");
+    const res = await db.transaction((tx) =>
+      saveThread(tx, {
+        orgId: c.orgId,
+        channel: "telegram",
+        title: c.chatName,
+        source: "telegram",
+        sourceKey: `telegram:${c.chatId}`,
+        participants: c.participants.map((p) => ({
+          key: p.handle,
+          name: p.name,
+          handle: `telegram:${p.handle}`,
+          isMe: p.handle === c.meId,
+        })),
+        messages: c.messages.map((m) => ({
+          participantKey: m.fromId,
+          sentAt: new Date(m.sentAt),
+          body: m.body,
+          sourceKey: `telegram:${c.chatId}:${m.id}`,
+        })),
+      }),
+    );
+    return { created: res.created, added: res.added, duplicates: res.duplicates };
+  });
+}
+
+/** Call once after all chunks, so pages pick up the new threads. */
+export async function finishTelegramImport() {
+  return run(async () => {
     refreshAll();
-    return { ...summary, imported: totals };
   });
 }
 

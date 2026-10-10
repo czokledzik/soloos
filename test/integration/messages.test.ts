@@ -6,11 +6,13 @@ import { convertOpportunityToProject, createLead } from "@/server/crm-actions";
 import { listClients, listPipeline } from "@/server/crm-queries";
 import {
   deleteMessage,
-  importTelegram,
+  importTelegramChunk,
   savePastedThread,
+  telegramPreview,
   updateParticipant,
   type PastedThread,
 } from "@/server/message-actions";
+import { parseTelegramExport } from "@/lib/telegram";
 import { getThread, listAllThreads, listThreads } from "@/server/message-queries";
 import { form, makeOrg, ok, resetDb } from "../db";
 
@@ -138,51 +140,54 @@ describe("paste and fix", () => {
 });
 
 describe("Telegram import", () => {
-  const file = () => new File([readFileSync("test/fixtures/telegram-full.json")], "result.json");
-  const upload = (extra: Record<string, string>) => {
-    const fd = new FormData();
-    fd.set("file", file());
-    for (const [k, v] of Object.entries(extra)) fd.set(k, v);
-    return fd;
+  const exported = () => parseTelegramExport(readFileSync("test/fixtures/telegram-full.json", "utf8"));
+  const chunk = (orgId: number, chatId: number, slice?: [number, number]) => {
+    const c = exported().chats.find((x) => x.id === chatId)!;
+    return {
+      chatId: c.id,
+      chatName: c.name,
+      orgId,
+      meId: "user1001",
+      participants: c.participants.map(({ handle, name }) => ({ handle, name })),
+      messages: c.messages
+        .slice(...(slice ?? [0, c.messages.length]))
+        .map((m) => ({ id: m.id, fromId: m.fromId, sentAt: m.sentAt.toISOString(), body: m.body })),
+    };
   };
 
-  it("previews chats with a suggested client", async () => {
+  it("previews chats with a suggested client and what's already imported", async () => {
     const org = await makeOrg({ name: "Bakery" });
     await db.insert(contacts).values({ orgId: org.id, name: "Jan Kowalski" });
-    const res = ok(await importTelegram(upload({ dryRun: "1" })));
-    expect(res.meId).toBe("user1001");
-    expect(res.chats.map((c) => [c.name, c.messages, c.suggestedOrgId, c.alreadyImported])).toEqual([
-      ["Shop project", 3, org.id, 0],
-      ["Anna Nowak", 4, null, 0],
-    ]);
-    expect(await db.select().from(threads)).toEqual([]);
+    const chats = exported().chats.map((c) => ({ id: c.id, participants: c.participants }));
+    expect(ok(await telegramPreview(chats, "user1001"))).toEqual({
+      2002: { suggestedOrgId: null, alreadyImported: 0 },
+      3003: { suggestedOrgId: org.id, alreadyImported: 0 },
+    });
+    ok(await importTelegramChunk(chunk(org.id, 3003)));
+    expect(ok(await telegramPreview(chats, "user1001"))![3003].alreadyImported).toBe(3);
   });
 
-  it("imports assigned chats once, adding only new messages on re-import", async () => {
+  it("imports in chunks into one thread, idempotently", async () => {
     const org = await makeOrg({ name: "Bakery" });
-    const res = ok(await importTelegram(upload({ assign: JSON.stringify({ 3003: org.id }) })));
-    expect(res.imported).toEqual({ threads: 1, messages: 3, duplicates: 0 });
+    expect(ok(await importTelegramChunk(chunk(org.id, 2002, [0, 2])))).toEqual({ created: true, added: 2, duplicates: 0 });
+    expect(ok(await importTelegramChunk(chunk(org.id, 2002, [2, 4])))).toEqual({ created: false, added: 2, duplicates: 0 });
+    expect(ok(await importTelegramChunk(chunk(org.id, 2002)))).toEqual({ created: false, added: 0, duplicates: 4 });
 
     const [t] = await listThreads({ orgId: org.id });
-    expect(t).toMatchObject({ channel: "telegram", title: "Shop project", source: "telegram" });
+    expect(t).toMatchObject({ channel: "telegram", title: "Anna Nowak", source: "telegram" });
     expect(t.messages.map((m) => [m.sender, m.isMe])).toEqual([
-      ["Jan Kowalski", false],
-      ["Me", true],
       ["Anna Nowak", false],
+      ["Anna Nowak", false],
+      ["Me", true],
+      ["Me", true],
     ]);
-
-    const again = ok(await importTelegram(upload({ assign: JSON.stringify({ 3003: org.id, 2002: org.id }) })));
-    expect(again.imported).toEqual({ threads: 1, messages: 4, duplicates: 3 });
-    expect(await db.select().from(threads)).toHaveLength(2);
   });
 
-  it("skips chats assigned to 0", async () => {
-    const org = await makeOrg();
-    const res = ok(await importTelegram(upload({ assign: JSON.stringify({ 3003: 0, 2002: org.id }) })));
-    expect(res.imported).toEqual({ threads: 1, messages: 4, duplicates: 0 });
-  });
-
-  it("needs at least one assigned chat", async () => {
-    expect(await importTelegram(upload({ assign: "{}" }))).toEqual({ ok: false, error: "Pick a client for at least one chat" });
+  it("rejects unknown clients and malformed chunks", async () => {
+    expect(await importTelegramChunk(chunk(999, 2002))).toEqual({ ok: false, error: "Client not found" });
+    expect(await importTelegramChunk({ ...chunk(1, 2002), messages: "x" } as never)).toEqual({
+      ok: false,
+      error: "That chat couldn't be read",
+    });
   });
 });

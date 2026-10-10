@@ -47,3 +47,6 @@ Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` d
   no tools / no MCP, since prompts contain untrusted client text). **Not run against the real API or CLI** (no key here,
   and I didn't spend your subscription): request shape, refusal/error handling, queue, schema validation and CLI output
   parsing are tested with fakes; the browser test plays the runner over HTTP.
+- Telegram import reworked: `result.json` is parsed in the browser and only chosen chats are sent, 1000 messages per
+  request (Vercel caps request bodies at ~4.5 MB; full exports are much bigger). Note: the existing Clockify/Linear
+  CSV upload has the same cap on Vercel despite `bodySizeLimit: 20mb`; fine for normal exports, not changed.

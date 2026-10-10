@@ -70,8 +70,8 @@ test("split a logged conversation into messages", async ({ page }) => {
 test("import a Telegram export from Settings", async ({ page }) => {
   await page.goto("/settings");
   const panel = page.locator("section", { has: page.getByRole("heading", { name: "Telegram chats" }) }).last();
+  // Picking the file parses it in the browser and asks the server only for suggestions.
   await panel.getByLabel("result.json").setInputFiles("test/fixtures/telegram-full.json");
-  await panel.getByRole("button", { name: "Preview" }).click();
   await expect(panel.getByLabel("You are")).toHaveValue("user1001");
   // Anna Nowak is a contact of the florist, so her chat is pre-assigned.
   await expect(panel.getByLabel("Client for Anna Nowak")).toHaveValue(String(orgId));
