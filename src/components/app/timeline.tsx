@@ -5,52 +5,59 @@ import Link from "next/link";
 import { format } from "date-fns";
 import {
   BriefcaseIcon,
-  MailIcon,
-  MessagesSquareIcon,
-  MessageCircleIcon,
+  ScissorsIcon,
   PencilIcon,
-  PhoneIcon,
-  SendIcon,
   SparklesIcon,
-  StickyNoteIcon,
   Trash2Icon,
-  UsersIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { Interaction } from "@/db/schema";
+import { CHANNEL_ICON } from "@/lib/channel-icons";
 import { CHANNELS, DIRECTIONS, labelOf } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { deleteInteraction } from "@/server/crm-actions";
 import type { CrmPickers, InteractionRow } from "@/server/crm-queries";
+import type { MessageView, ThreadView } from "@/server/message-queries";
 import type { PickerData } from "@/server/queries";
 import { InteractionForm } from "./crm-forms";
+import { MessageList } from "./thread-view";
 import { useAction } from "./use-action";
-
-export const CHANNEL_ICON = {
-  facebook: MessagesSquareIcon,
-  email: MailIcon,
-  telegram: SendIcon,
-  whatsapp: MessageCircleIcon,
-  call: PhoneIcon,
-  meeting: UsersIcon,
-  other: StickyNoteIcon,
-} satisfies Record<Interaction["channel"], unknown>;
 
 /** Non-interaction events shown between conversations (lead created, project started…). */
 export type TimelineEvent = { key: string; at: Date; label: string; href?: string; kind: "lead" | "project" };
 
-type Item = { type: "interaction"; at: Date; row: InteractionRow } | { type: "event"; at: Date; event: TimelineEvent };
+type ThreadDay = { thread: ThreadView; day: string; messages: MessageView[] };
+
+type Item =
+  | { type: "interaction"; at: Date; row: InteractionRow }
+  | { type: "event"; at: Date; event: TimelineEvent }
+  | { type: "thread"; at: Date; group: ThreadDay };
+
+/** A thread shows up once per day it was active, so it interleaves with everything else by date. */
+function threadDays(threads: ThreadView[]): ThreadDay[] {
+  const out: ThreadDay[] = [];
+  for (const thread of threads) {
+    const byDay = new Map<string, MessageView[]>();
+    for (const m of thread.messages) {
+      const day = format(m.sentAt, "yyyy-MM-dd");
+      byDay.set(day, [...(byDay.get(day) ?? []), m]);
+    }
+    for (const [day, messages] of byDay) out.push({ thread, day, messages });
+  }
+  return out;
+}
 
 export function Timeline({
   interactions,
   events = [],
+  threads = [],
   crm,
   projects,
   showLinks = true,
 }: {
   interactions: InteractionRow[];
   events?: TimelineEvent[];
+  threads?: ThreadView[];
   crm: CrmPickers;
   projects: PickerData["projects"];
   showLinks?: boolean;
@@ -59,6 +66,7 @@ export function Timeline({
   const items: Item[] = [
     ...interactions.map((row) => ({ type: "interaction" as const, at: row.occurredAt, row })),
     ...events.map((event) => ({ type: "event" as const, at: event.at, event })),
+    ...threadDays(threads).map((group) => ({ type: "thread" as const, at: group.messages.at(-1)!.sentAt, group })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
   if (items.length === 0) {
@@ -70,6 +78,8 @@ export function Timeline({
       {items.map((item) =>
         item.type === "interaction" ? (
           <InteractionItem key={`i${item.row.id}`} row={item.row} showLinks={showLinks} onEdit={() => setEditing(item.row)} />
+        ) : item.type === "thread" ? (
+          <ThreadDayItem key={`t${item.group.thread.id}-${item.group.day}`} group={item.group} />
         ) : (
           <EventItem key={item.event.key} event={item.event} />
         ),
@@ -124,6 +134,15 @@ function InteractionItem({ row, showLinks, onEdit }: { row: InteractionRow; show
             </Link>
           )}
           <div className="ml-auto flex opacity-0 group-hover:opacity-100">
+            {row.bodyMd && (
+              <Link
+                href={`/messages/new?interaction=${row.id}`}
+                title="Split into messages"
+                className={buttonVariants({ size: "icon-xs", variant: "ghost" })}
+              >
+                <ScissorsIcon />
+              </Link>
+            )}
             <Button size="icon-xs" variant="ghost" title="Edit" onClick={onEdit}>
               <PencilIcon />
             </Button>
@@ -151,6 +170,42 @@ function InteractionItem({ row, showLinks, onEdit }: { row: InteractionRow; show
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ThreadDayItem({ group: { thread, messages } }: { group: ThreadDay }) {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = CHANNEL_ICON[thread.channel];
+  const people = thread.participants.filter((p) => !p.isMe).map((p) => p.contactName ?? p.name);
+  const shown = expanded ? messages : messages.slice(-6);
+  return (
+    <div className="relative flex gap-3">
+      <div className="z-10 flex size-8 shrink-0 items-center justify-center rounded-full border bg-background">
+        <Icon className="size-4 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1 rounded-xl border p-3">
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <Link href={`/messages/${thread.id}`} className="font-medium text-foreground hover:underline">
+            {thread.title || people.join(", ") || labelOf(CHANNELS, thread.channel)}
+          </Link>
+          <span>{labelOf(CHANNELS, thread.channel)}</span>
+          {thread.title && people.length > 0 && <span>· {people.join(", ")}</span>}
+          <span>
+            · {messages.length} message{messages.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {messages.length > shown.length && (
+          <button
+            type="button"
+            className="mb-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            onClick={() => setExpanded(true)}
+          >
+            Show {messages.length - shown.length} earlier
+          </button>
+        )}
+        <MessageList messages={shown} />
       </div>
     </div>
   );

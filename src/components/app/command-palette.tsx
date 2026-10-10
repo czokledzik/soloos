@@ -8,7 +8,9 @@ import {
   SparklesIcon,
   BriefcaseIcon,
   CircleDotIcon,
+  ClipboardPasteIcon,
   ClockIcon,
+  SearchIcon,
   PlayIcon,
   PlusIcon,
   SquareIcon,
@@ -92,6 +94,9 @@ export function CommandPalette({
             </CommandItem>
             <CommandItem onSelect={() => run(() => openGlobalDialog("interaction"))}>
               <MessageSquarePlusIcon /> Log conversation
+            </CommandItem>
+            <CommandItem onSelect={() => run(() => router.push("/messages/new"))}>
+              <ClipboardPasteIcon /> Paste chat messages
             </CommandItem>
             <CommandItem onSelect={() => run(() => openGlobalDialog("project"))}>
               <PlusIcon /> New project
@@ -186,6 +191,21 @@ export function CommandPalette({
                 ))}
               </CommandGroup>
             </>
+          )}
+          {search.trim().length >= 2 && (
+            <CommandGroup heading="Search" forceMount>
+              {/* Always shown, and sorted after real matches so Enter still jumps to the best one. */}
+              <CommandItem
+                forceMount
+                value="__search_everything__"
+                onSelect={() => {
+                  const q = search.trim();
+                  run(() => router.push(`/search?q=${encodeURIComponent(q)}`));
+                }}
+              >
+                <SearchIcon /> Search messages, docs and notes for “{search.trim()}”
+              </CommandItem>
+            </CommandGroup>
           )}
         </CommandList>
       </Command>

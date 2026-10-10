@@ -4,11 +4,13 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   smallint,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // Money is stored as integer minor units (grosze/cents).
@@ -119,6 +121,13 @@ export const projects = pgTable(
     startDate: date(),
     dueDate: date(),
     notesMd: text().notNull().default(""),
+    // Short "what is this project" summary: the first thing anyone (or an AI) reads.
+    briefMd: text().notNull().default(""),
+    // Agreed scope for fixed-price work; change requests are measured against it.
+    scopeMd: text().notNull().default(""),
+    scopeBaselinedAt: timestamp({ withTimezone: true }),
+    // Secret for the read-only client portal at /p/<token>; null = portal off.
+    portalToken: text().unique(),
     archivedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -246,6 +255,233 @@ export const runningTimer = pgTable("running_timer", {
   note: text().notNull().default(""),
 });
 
+// ---------- Messages ----------
+// A thread is one conversation on one channel (an email thread, a Telegram chat,
+// a group chat). Participants are the people in it as they appear in the source
+// (name + handle), each optionally mapped to a contact; one of them can be "me".
+
+export const threadSource = pgEnum("thread_source", ["paste", "telegram", "email"]);
+
+export const threads = pgTable(
+  "threads",
+  {
+    id: id(),
+    orgId: integer()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    opportunityId: integer().references(() => opportunities.id, { onDelete: "set null" }),
+    projectId: integer().references(() => projects.id, { onDelete: "set null" }),
+    channel: channel().notNull().default("other"),
+    title: text().notNull().default(""),
+    source: threadSource().notNull().default("paste"),
+    sourceKey: text().unique(), // e.g. "telegram:123456", "email:<root message-id>"
+    lastMessageAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.orgId, t.lastMessageAt), index().on(t.opportunityId), index().on(t.projectId)],
+);
+
+export const threadParticipants = pgTable(
+  "thread_participants",
+  {
+    id: id(),
+    threadId: integer()
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    handle: text(), // email address, Telegram user id/username; null for pasted text
+    contactId: integer().references(() => contacts.id, { onDelete: "set null" }),
+    isMe: boolean().notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [unique().on(t.threadId, t.name, t.handle).nullsNotDistinct(), index().on(t.contactId)],
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: id(),
+    threadId: integer()
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    participantId: integer().references(() => threadParticipants.id, { onDelete: "set null" }),
+    sentAt: timestamp({ withTimezone: true }).notNull(),
+    bodyMd: text().notNull().default(""),
+    sourceKey: text().unique(), // e.g. "telegram:123456:789", "email:<message-id>"
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.threadId, t.sentAt)],
+);
+
+// ---------- Project docs ----------
+
+export const changeRequestStatus = pgEnum("change_request_status", ["proposed", "approved", "rejected"]);
+export const systemKind = pgEnum("system_kind", [
+  "repo",
+  "n8n",
+  "elevenlabs",
+  "twilio",
+  "baserow",
+  "vercel",
+  "database",
+  "doc",
+  "other",
+]);
+
+/** Dated decisions with where they came from and who made them. */
+export const decisions = pgTable(
+  "decisions",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    decidedOn: date().notNull(),
+    title: text().notNull(),
+    detailsMd: text().notNull().default(""),
+    decidedBy: text(), // free text: "Anna (client)", "me", "both"
+    sourceMessageId: integer().references(() => messages.id, { onDelete: "set null" }),
+    sourceInteractionId: integer().references(() => interactions.id, { onDelete: "set null" }),
+    sourceNote: text(), // "call 3 Oct", link, …
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId, t.decidedOn)],
+);
+
+/** Requested changes to the agreed scope, with their effect on hours and price. */
+export const changeRequests = pgTable(
+  "change_requests",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    detailsMd: text().notNull().default(""),
+    requestedBy: text(),
+    requestedOn: date().notNull(),
+    hoursImpactMin: integer(), // + more work, - less
+    priceImpact: integer(), // minor units, in the project's currency
+    status: changeRequestStatus().notNull().default("proposed"),
+    decidedOn: date(),
+    sourceMessageId: integer().references(() => messages.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId)],
+);
+
+/** Free-form project documents (markdown, may contain Mermaid diagrams). */
+export const docPages = pgTable(
+  "doc_pages",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    bodyMd: text().notNull().default(""),
+    sortOrder: integer().notNull().default(0),
+    /** Shown on the client portal (always the latest version). */
+    published: boolean().notNull().default(false),
+    archivedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId)],
+);
+
+/** Progress updates for the client; drafts until published. */
+export const projectUpdates = pgTable(
+  "project_updates",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    bodyMd: text().notNull().default(""),
+    publishedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId, t.publishedAt)],
+);
+
+/** Every saved version of a doc page (the latest is also on doc_pages). */
+export const docRevisions = pgTable(
+  "doc_revisions",
+  {
+    id: id(),
+    pageId: integer()
+      .notNull()
+      .references(() => docPages.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    bodyMd: text().notNull(),
+    note: text(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.pageId, t.createdAt)],
+);
+
+/** Links to the systems a project runs on. Never credentials. */
+export const systems = pgTable(
+  "systems",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    kind: systemKind().notNull().default("other"),
+    name: text().notNull(),
+    url: text(),
+    notes: text().notNull().default(""),
+    sortOrder: integer().notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.projectId)],
+);
+
+// ---------- AI ----------
+
+export const aiJobKind = pgEnum("ai_job_kind", ["thread_insights", "project_brief", "lead_reply"]);
+export const aiJobStatus = pgEnum("ai_job_status", ["queued", "running", "done", "failed"]);
+
+/**
+ * One AI request (a button press). Run right away through the API, or queued for
+ * a local Claude Code runner that polls for work. Results are suggestions the
+ * user accepts or ignores; nothing is applied automatically.
+ */
+export const aiJobs = pgTable(
+  "ai_jobs",
+  {
+    id: id(),
+    kind: aiJobKind().notNull(),
+    // What it's about, e.g. { threadId: 3 }; also used to find the latest job for a page.
+    subject: text().notNull(),
+    status: aiJobStatus().notNull().default("queued"),
+    provider: text().notNull(), // "api" | "runner"
+    prompt: text().notNull(),
+    result: jsonb(),
+    error: text(),
+    startedAt: timestamp({ withTimezone: true }),
+    finishedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.subject, t.createdAt), index().on(t.status, t.createdAt)],
+);
+
+/** Small bits of app state, e.g. how far the email sync got per mailbox. */
+export const appState = pgTable("app_state", {
+  key: text().primaryKey(),
+  value: jsonb().notNull(),
+  updatedAt: updatedAt(),
+});
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   contacts: many(contacts),
   projects: many(projects),
@@ -262,6 +498,39 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   tasks: many(tasks),
   payments: many(payments),
   timeEntries: many(timeEntries),
+  decisions: many(decisions),
+  changeRequests: many(changeRequests),
+  docPages: many(docPages),
+  systems: many(systems),
+  updates: many(projectUpdates),
+}));
+
+export const projectUpdatesRelations = relations(projectUpdates, ({ one }) => ({
+  project: one(projects, { fields: [projectUpdates.projectId], references: [projects.id] }),
+}));
+
+export const decisionsRelations = relations(decisions, ({ one }) => ({
+  project: one(projects, { fields: [decisions.projectId], references: [projects.id] }),
+  sourceMessage: one(messages, { fields: [decisions.sourceMessageId], references: [messages.id] }),
+  sourceInteraction: one(interactions, { fields: [decisions.sourceInteractionId], references: [interactions.id] }),
+}));
+
+export const changeRequestsRelations = relations(changeRequests, ({ one }) => ({
+  project: one(projects, { fields: [changeRequests.projectId], references: [projects.id] }),
+  sourceMessage: one(messages, { fields: [changeRequests.sourceMessageId], references: [messages.id] }),
+}));
+
+export const docPagesRelations = relations(docPages, ({ one, many }) => ({
+  project: one(projects, { fields: [docPages.projectId], references: [projects.id] }),
+  revisions: many(docRevisions),
+}));
+
+export const docRevisionsRelations = relations(docRevisions, ({ one }) => ({
+  page: one(docPages, { fields: [docRevisions.pageId], references: [docPages.id] }),
+}));
+
+export const systemsRelations = relations(systems, ({ one }) => ({
+  project: one(projects, { fields: [systems.projectId], references: [projects.id] }),
 }));
 
 export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
@@ -299,6 +568,25 @@ export const runningTimerRelations = relations(runningTimer, ({ one }) => ({
   task: one(tasks, { fields: [runningTimer.taskId], references: [tasks.id] }),
 }));
 
+export const threadsRelations = relations(threads, ({ one, many }) => ({
+  org: one(organizations, { fields: [threads.orgId], references: [organizations.id] }),
+  opportunity: one(opportunities, { fields: [threads.opportunityId], references: [opportunities.id] }),
+  project: one(projects, { fields: [threads.projectId], references: [projects.id] }),
+  participants: many(threadParticipants),
+  messages: many(messages),
+}));
+
+export const threadParticipantsRelations = relations(threadParticipants, ({ one, many }) => ({
+  thread: one(threads, { fields: [threadParticipants.threadId], references: [threads.id] }),
+  contact: one(contacts, { fields: [threadParticipants.contactId], references: [contacts.id] }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  thread: one(threads, { fields: [messages.threadId], references: [threads.id] }),
+  participant: one(threadParticipants, { fields: [messages.participantId], references: [threadParticipants.id] }),
+}));
+
 export type Organization = typeof organizations.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
 export type Project = typeof projects.$inferSelect;
@@ -307,5 +595,15 @@ export type Interaction = typeof interactions.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type TimeEntry = typeof timeEntries.$inferSelect;
+export type Thread = typeof threads.$inferSelect;
+export type ThreadParticipant = typeof threadParticipants.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type Decision = typeof decisions.$inferSelect;
+export type ChangeRequest = typeof changeRequests.$inferSelect;
+export type DocPage = typeof docPages.$inferSelect;
+export type DocRevision = typeof docRevisions.$inferSelect;
+export type ProjectSystem = typeof systems.$inferSelect;
+export type ProjectUpdate = typeof projectUpdates.$inferSelect;
+export type AiJob = typeof aiJobs.$inferSelect;
 export type TaskStatus = (typeof taskStatus.enumValues)[number];
 export type OpportunityStage = (typeof opportunityStage.enumValues)[number];

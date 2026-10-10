@@ -5,6 +5,7 @@ import {
   ClockIcon,
   KanbanSquareIcon,
   ListTodoIcon,
+  MessagesSquareIcon,
   SunIcon,
 } from "lucide-react";
 
@@ -16,4 +17,5 @@ export const NAV_ITEMS = [
   { href: "/reports", label: "Reports", icon: BarChart3Icon },
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquareIcon },
   { href: "/clients", label: "Clients", icon: Building2Icon },
+  { href: "/messages", label: "Messages", icon: MessagesSquareIcon },
 ];

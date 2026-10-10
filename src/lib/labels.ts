@@ -100,3 +100,21 @@ export function labelOf<T extends { value: string | number; label: string }>(
 ): string {
   return list.find((x) => x.value === value)?.label ?? "—";
 }
+
+export const SYSTEM_KINDS = [
+  { value: "repo", label: "Repo" },
+  { value: "n8n", label: "n8n" },
+  { value: "elevenlabs", label: "ElevenLabs" },
+  { value: "twilio", label: "Twilio" },
+  { value: "baserow", label: "Baserow" },
+  { value: "vercel", label: "Vercel" },
+  { value: "database", label: "Database" },
+  { value: "doc", label: "Doc" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const CHANGE_REQUEST_STATUSES = [
+  { value: "proposed", label: "Proposed" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+] as const;

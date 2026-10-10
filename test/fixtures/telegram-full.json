@@ -1,0 +1,32 @@
+{
+  "about": "Here is the data you requested.",
+  "personal_information": { "user_id": 1001, "first_name": "Tomasz", "last_name": "Lis" },
+  "chats": {
+    "about": "This page lists all chats from this export.",
+    "list": [
+      {
+        "name": "Anna Nowak",
+        "type": "personal_chat",
+        "id": 2002,
+        "messages": [
+          { "id": 1, "type": "service", "date": "2026-10-01T10:00:00", "date_unixtime": "1790841600", "actor": "Anna Nowak", "actor_id": "user2002", "action": "phone_call", "text": "" },
+          { "id": 2, "type": "message", "date": "2026-10-05T14:32:00", "date_unixtime": "1791203520", "from": "Anna Nowak", "from_id": "user2002", "text": "Cześć! Brief w załączniku", "text_entities": [] },
+          { "id": 3, "type": "message", "date": "2026-10-05T14:33:00", "date_unixtime": "1791203580", "from": "Anna Nowak", "from_id": "user2002", "file": "files/brief.pdf", "file_name": "brief.pdf", "media_type": "document", "text": "" },
+          { "id": 4, "type": "message", "date": "2026-10-05T14:40:00", "date_unixtime": "1791204000", "from": "Tomasz Lis", "from_id": "user1001", "text": ["Dzięki, zobacz ", { "type": "text_link", "text": "ofertę", "href": "https://offers.example/o/abc" }, " i daj znać"] },
+          { "id": 5, "type": "message", "date": "2026-10-05T14:41:00", "date_unixtime": "1791204060", "from": "Tomasz Lis", "from_id": "user1001", "photo": "photos/photo_1.jpg", "text": "mockup" }
+        ]
+      },
+      {
+        "name": "Shop project",
+        "type": "private_group",
+        "id": 3003,
+        "messages": [
+          { "id": 10, "type": "message", "date": "2026-10-06T09:00:00", "date_unixtime": "1791270000", "from": "Jan Kowalski", "from_id": "user3001", "text": "Kiedy demo?" },
+          { "id": 11, "type": "message", "date": "2026-10-06T09:05:00", "date_unixtime": "1791270300", "from": "Tomasz Lis", "from_id": "user1001", "text": "W piątek", "forwarded_from": null },
+          { "id": 12, "type": "message", "date": "2026-10-06T09:06:00", "date_unixtime": "1791270360", "from": "Anna Nowak", "from_id": "user2002", "media_type": "sticker", "sticker_emoji": "👍", "file": "(File not included. Change data exporting settings to download.)", "text": "" }
+        ]
+      },
+      { "name": "Empty", "type": "personal_chat", "id": 4004, "messages": [] }
+    ]
+  }
+}

@@ -16,8 +16,9 @@ import {
   projects,
   type OpportunityStage,
 } from "@/db";
-import { ActionError, int, money, oneOf, reqStr, run, str } from "./form";
+import { ActionError, currency, int, money, oneOf, reqStr, run, str } from "./form";
 import { refreshAll } from "./refresh";
+import { moveLeadThreadsToProject } from "./threads";
 
 // ---------- Organizations ----------
 
@@ -28,7 +29,7 @@ function orgValues(fd: FormData) {
     status: oneOf(fd, "status", orgStatus.enumValues) ?? "lead",
     website: str(fd, "website"),
     defaultRate: money(fd, "defaultRate"),
-    currency: str(fd, "currency") ?? "PLN",
+    currency: currency(fd),
   };
 }
 
@@ -266,6 +267,7 @@ export async function convertOpportunityToProject(id: number) {
         .update(interactions)
         .set({ projectId: p.id })
         .where(and(eq(interactions.opportunityId, id), isNull(interactions.projectId)));
+      await moveLeadThreadsToProject(tx, id, p.id);
       return p.id;
     });
     await applyStage(id, "won");

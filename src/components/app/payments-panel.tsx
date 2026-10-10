@@ -9,6 +9,7 @@ import { formatDate, formatMoney, toDateString } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { createPayment, deletePayment, setPaymentPaid } from "@/server/actions";
 import { useAction } from "./use-action";
+import { submitForm } from "./submit-form";
 
 const TEMPLATES = [
   { label: "40% upfront / 60% on delivery", parts: [["Upfront", 40], ["On delivery", 60]] },
@@ -96,9 +97,10 @@ export function PaymentsPanel({
 
       <form
         className="grid grid-cols-[1fr_5rem_8rem_9rem_auto] items-end gap-2 rounded-xl border p-3"
-        action={async (fd) => {
-          await exec(() => createPayment(fd), "Payment added");
-        }}
+        onSubmit={submitForm(async (fd, form) => {
+          const res = await exec(() => createPayment(fd), "Payment added");
+          if (res.ok) form.reset();
+        })}
       >
         <input type="hidden" name="projectId" value={projectId} />
         <Input name="label" placeholder="Label, e.g. 40% upfront" required />

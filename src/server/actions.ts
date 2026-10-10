@@ -17,7 +17,7 @@ import {
 } from "@/db";
 import { isBillableByDefault, resolveRate } from "@/lib/billing";
 import { parseDuration } from "@/lib/format";
-import { ActionError, int, money, oneOf, reqStr, run, str } from "./form";
+import { ActionError, currency, int, money, oneOf, reqStr, run, str } from "./form";
 import { refreshAll } from "./refresh";
 
 async function projectWithOrg(projectId: number) {
@@ -40,7 +40,7 @@ function projectValues(fd: FormData) {
     hourlyRate: money(fd, "hourlyRate"),
     fixedPrice: money(fd, "fixedPrice"),
     budgetHours: int(fd, "budgetHours"),
-    currency: str(fd, "currency") ?? "PLN",
+    currency: currency(fd),
     startDate: str(fd, "startDate"),
     dueDate: str(fd, "dueDate"),
   };
@@ -128,10 +128,11 @@ export async function updateTask(id: number, patch: TaskPatch) {
   return run(async () => {
     if (patch.title !== undefined && !patch.title.trim()) throw new ActionError("Title is required");
     if (patch.status && !taskStatus.enumValues.includes(patch.status)) throw new ActionError("Bad status");
+    // Keep the original completion time when a done task is saved again.
     const extra =
       patch.status === undefined
         ? {}
-        : { completedAt: patch.status === "done" ? new Date() : null };
+        : { completedAt: patch.status === "done" ? sql`coalesce(${tasks.completedAt}, now())` : null };
     await db
       .update(tasks)
       .set({ ...patch, ...extra })
@@ -173,8 +174,16 @@ export async function deleteTask(id: number) {
 
 // ---------- Timer ----------
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Serializes timer changes so quick double-starts can't collide on the singleton row. */
+async function lockTimer(tx: Tx) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('running_timer'))`);
+}
+
 /** Stop the running timer (if any), writing a time entry. Returns the entry id. */
-async function stopRunning(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) {
+async function stopRunning(tx: Tx) {
+  await lockTimer(tx);
   const [timer] = await tx.delete(runningTimer).returning();
   if (!timer) return null;
   const endedAt = new Date();
