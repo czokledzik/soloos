@@ -1,5 +1,19 @@
 # Overnight run (2026-10-09 → 10)
 
+## Before you merge
+
+- **Nothing is pushed.** Branch `overnight/tests-and-roadmap` exists only in `~/src/soloos` on the machine that ran this.
+  Merging to `main` deploys to Vercel and runs migrations 0002–0006 on Neon. They only add tables and columns; I ran
+  the upgrade against a copy of `main`'s schema with data and nothing was lost.
+- **New, optional env vars** (README has details): `MCP_TOKEN` (Claude Code), `IMAP_HOST`/`IMAP_USER`/`IMAP_PASSWORD`
+  + `CRON_SECRET` (email), `AI_PROVIDER` + `ANTHROPIC_API_KEY` or `AI_RUNNER_TOKEN` (Claude buttons). Without them
+  those features stay off; everything else works as before.
+- **Your calls:** how to schedule the email sync (Vercel Hobby only allows daily crons), and whether Claude buttons
+  use the API (costs per use) or the local runner (your subscription, needs an always-on machine).
+- **Not verified against the real thing:** Hostinger IMAP, the Anthropic API, the `claude` CLI runner, and
+  claude.ai's connector UI (no credentials here). Each has tests with fakes or a local stand-in.
+- `pnpm test` needs a Postgres at `TEST_DATABASE_URL`; `pnpm test:e2e` additionally needs Chromium.
+
 Branch `overnight/tests-and-roadmap`, local only (not pushed: a push to `main` deploys and migrates production).
 
 ## Plan
