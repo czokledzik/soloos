@@ -35,7 +35,34 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
   await expect(client.getByText("1 of 2 tasks done")).toBeVisible();
   await expect(client.getByRole("heading", { name: "Week 1" })).toBeVisible();
   await expect(client.locator("strong", { hasText: "done" })).toBeVisible();
+
+  // Each published doc is its own tab.
+  const sections = client.getByRole("navigation", { name: "Sections" });
+  await expect(sections.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+  await sections.getByRole("link", { name: "Architecture" }).click();
+  await expect(client).toHaveURL(/\?tab=\d+$/);
+  await expect(client.getByRole("heading", { name: "Week 1" })).toBeHidden();
   await expect(client.locator("svg[id^=mmd-] >> text=Portal")).toBeVisible();
+
+  // Light by default; the switch is remembered for the portal only.
+  await expect(client.locator("html")).toHaveClass(/\blight\b/);
+  await client.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(client.locator("html")).toHaveClass(/\bdark\b/);
+  await client.reload();
+  await expect(client.locator("html")).toHaveClass(/\bdark\b/);
+
+  // The PDF view has everything on one page, always light, diagrams drawn without pan/zoom.
+  await client.getByRole("link", { name: "Download PDF" }).click();
+  await expect(client).toHaveURL(/\/print$/);
+  await expect(client).toHaveTitle("Portal demo — Portal Client");
+  await expect(client.locator("html")).toHaveClass(/\blight\b/);
+  await expect(client.getByRole("heading", { name: "Week 1" })).toBeVisible();
+  await expect(client.getByRole("heading", { name: "Architecture" })).toBeVisible();
+  await expect(client.locator("svg[id^=mmd-] >> text=Portal")).toBeVisible();
+  await expect(client.getByRole("button", { name: "Save as PDF" })).toBeVisible();
+  const printHtml = await client.content();
+  for (const hidden of ["INTERNAL NOTE", "Secret plan", "do not show", "Open task"]) expect(printHtml).not.toContain(hidden);
+  await client.getByRole("link", { name: "Back" }).click();
   // Neither the page nor the serialized React payload in it carries internal data.
   const html = await client.content();
   for (const hidden of ["INTERNAL NOTE", "Secret plan", "do not show", "Open task"]) expect(html).not.toContain(hidden);

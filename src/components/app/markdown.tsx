@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { MermaidDiagram } from "./mermaid-diagram";
 
-const components: Components = {
+const components = (interactiveDiagrams: boolean): Components => ({
   a: ({ href, title, children }) => (
     <a href={href} title={title} target="_blank" rel="noreferrer">
       {children}
@@ -13,7 +13,7 @@ const components: Components = {
   ),
   code: ({ className, children }) => {
     const lang = /language-(\w+)/.exec(className ?? "")?.[1];
-    if (lang === "mermaid") return <MermaidDiagram code={String(children).trim()} />;
+    if (lang === "mermaid") return <MermaidDiagram code={String(children).trim()} interactive={interactiveDiagrams} />;
     return <code className={className}>{children}</code>;
   },
   // Mermaid diagrams shouldn't sit inside a <pre> box.
@@ -25,10 +25,23 @@ const components: Components = {
       String((child.properties?.className as string[] | undefined)?.join(" ") ?? "").includes("language-mermaid");
     return isMermaid ? <>{children}</> : <pre {...props}>{children}</pre>;
   },
-};
+});
+const INTERACTIVE = components(true);
+const STATIC = components(false);
 
-/** GitHub-flavoured markdown with Mermaid code blocks. Raw HTML in the source is not rendered. */
-export function Markdown({ children, className }: { children: string; className?: string }) {
+/**
+ * GitHub-flavoured markdown with Mermaid code blocks. Raw HTML in the source is not rendered.
+ * `staticDiagrams` draws diagrams fitted to the width instead of in a pan/zoom box (print/PDF).
+ */
+export function Markdown({
+  children,
+  className,
+  staticDiagrams = false,
+}: {
+  children: string;
+  className?: string;
+  staticDiagrams?: boolean;
+}) {
   return (
     <div
       className={cn(
@@ -42,7 +55,7 @@ export function Markdown({ children, className }: { children: string; className?
         className,
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={staticDiagrams ? STATIC : INTERACTIVE}>
         {children}
       </ReactMarkdown>
     </div>

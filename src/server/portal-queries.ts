@@ -1,12 +1,14 @@
 import "server-only";
+import { cache } from "react";
 import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db, docPages, organizations, projectUpdates, projects, tasks } from "@/db";
 
 /**
  * Everything the client portal shows, and nothing else: no rates, hours, notes,
  * messages or internal docs. Null if the token doesn't match an active portal.
+ * Cached per request (page and its metadata both read it).
  */
-export async function getPortal(token: string) {
+export const getPortal = cache(async (token: string) => {
   if (!/^[A-Za-z0-9_-]{40,64}$/.test(token)) return null;
   const [project] = await db
     .select({
@@ -49,7 +51,7 @@ export async function getPortal(token: string) {
     updates: updates.map((u) => ({ ...u, publishedAt: u.publishedAt! })),
     docs,
   };
-}
+});
 export type Portal = NonNullable<Awaited<ReturnType<typeof getPortal>>>;
 
 export async function listProjectUpdates(projectId: number) {

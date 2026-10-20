@@ -1,71 +1,76 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { format, parseISO } from "date-fns";
-import { Markdown } from "@/components/app/markdown";
-import { PROJECT_STATUSES, labelOf } from "@/lib/labels";
+import { DownloadIcon } from "lucide-react";
+import { PortalThemeToggle } from "@/components/app/portal-controls";
+import { PortalDoc, PortalHeader, PortalOverview, hasOverview, portalTitle } from "@/components/app/portal-sections";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { getPortal } from "@/server/portal-queries";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Project status", robots: { index: false, follow: false } };
 
-/** Read-only client portal: progress, published updates and docs. No login, the link is the key. */
-export default async function PortalPage({ params }: PageProps<"/p/[token]">) {
+export async function generateMetadata({ params }: PageProps<"/p/[token]">): Promise<Metadata> {
   const portal = await getPortal((await params).token);
+  return {
+    title: { absolute: portal ? portalTitle(portal) : "Project status" },
+    robots: { index: false, follow: false },
+  };
+}
+
+/**
+ * Read-only client portal: progress, published updates and docs, one tab each (?tab=overview or a
+ * doc id), plus a print/PDF view of everything. No login, the link is the key.
+ */
+export default async function PortalPage({ params, searchParams }: PageProps<"/p/[token]">) {
+  const { token } = await params;
+  const portal = await getPortal(token);
   if (!portal) notFound();
-  const { progress } = portal;
-  const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+
+  const tabs = [
+    ...(hasOverview(portal) ? [{ key: "overview", title: "Overview" }] : []),
+    ...portal.docs.map((d) => ({ key: String(d.id), title: d.title })),
+  ];
+  const tabParam = (await searchParams).tab;
+  const current = tabs.find((t) => t.key === tabParam) ?? tabs[0];
+  const doc = portal.docs.find((d) => String(d.id) === current?.key);
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-8 px-6 py-10">
-      <header className="grid gap-1">
-        <div className="text-sm text-muted-foreground">{portal.clientName}</div>
-        <h1 className="text-2xl font-semibold tracking-tight">{portal.name}</h1>
-        <div className="text-sm text-muted-foreground">
-          {labelOf(PROJECT_STATUSES, portal.status)}
-          {portal.dueDate && ` · due ${format(parseISO(portal.dueDate), "d MMMM yyyy")}`}
+    <div className="mx-auto grid max-w-4xl gap-6 px-6 py-10">
+      <PortalHeader portal={portal}>
+        <div className="flex gap-2">
+          {tabs.length > 0 && (
+            <Link href={`/p/${token}/print`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <DownloadIcon />
+              Download PDF
+            </Link>
+          )}
+          <PortalThemeToggle />
         </div>
-      </header>
+      </PortalHeader>
 
-      {progress.total > 0 && (
-        <section className="grid gap-2" aria-label="Progress">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Progress</span>
-            <span className="text-muted-foreground tabular-nums">
-              {progress.done} of {progress.total} tasks done{progress.inProgress > 0 && ` · ${progress.inProgress} in progress`}
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-          </div>
-        </section>
-      )}
-
-      {portal.updates.length > 0 && (
-        <section className="grid gap-4">
-          <h2 className="text-lg font-semibold">Updates</h2>
-          {portal.updates.map((u) => (
-            <article key={u.id} className="rounded-xl border p-4">
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <h3 className="font-medium">{u.title}</h3>
-                <time className="text-xs text-muted-foreground">{format(u.publishedAt, "d MMM yyyy")}</time>
-              </div>
-              <Markdown>{u.bodyMd}</Markdown>
-            </article>
+      {tabs.length > 1 && (
+        <nav aria-label="Sections" className="-mx-1 flex flex-wrap gap-x-1 border-b">
+          {tabs.map((t) => (
+            <Link
+              key={t.key}
+              href={`?tab=${t.key}`}
+              scroll={false}
+              aria-current={t.key === current?.key ? "page" : undefined}
+              className={cn(
+                "-mb-px shrink-0 border-b-2 border-transparent px-3 py-2 text-sm whitespace-nowrap text-muted-foreground hover:text-foreground",
+                "aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground",
+              )}
+            >
+              {t.title}
+            </Link>
           ))}
-        </section>
+        </nav>
       )}
 
-      {portal.docs.map((d) => (
-        <section key={d.id} className="grid gap-2">
-          <h2 className="text-lg font-semibold">{d.title}</h2>
-          <Markdown>{d.bodyMd}</Markdown>
-          <p className="text-xs text-muted-foreground">Updated {format(d.updatedAt, "d MMM yyyy")}</p>
-        </section>
-      ))}
-
-      {portal.updates.length === 0 && portal.docs.length === 0 && progress.total === 0 && (
-        <p className="text-sm text-muted-foreground">Nothing shared yet.</p>
-      )}
+      {!current && <p className="text-sm text-muted-foreground">Nothing shared yet.</p>}
+      {current?.key === "overview" && <PortalOverview portal={portal} />}
+      {doc && <PortalDoc doc={doc} />}
     </div>
   );
 }
