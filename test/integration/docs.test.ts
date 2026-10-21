@@ -1,9 +1,16 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { db, decisions, docRevisions, projects, systems } from "@/db";
+import { db, decisions, docPages, docRevisions, openQuestions, projects, systems } from "@/db";
+import { DOC_TEMPLATES } from "@/lib/doc-templates";
 import {
+  answerOpenQuestion,
   baselineScope,
   createDocPage,
+  createDocsFromTemplate,
+  saveBusinessRule,
+  saveOpenQuestion,
+  setBusinessRuleRetired,
+  setOpenQuestionStatus,
   restoreRevision,
   saveChangeRequest,
   saveDecision,
@@ -13,7 +20,14 @@ import {
   updateProjectBrief,
   updateProjectScope,
 } from "@/server/doc-actions";
-import { getDocPage, listChangeRequests, listDecisions, listDocPages } from "@/server/doc-queries";
+import {
+  getDocPage,
+  listBusinessRules,
+  listChangeRequests,
+  listDecisions,
+  listDocPages,
+  listOpenQuestions,
+} from "@/server/doc-queries";
 import { form, makeProject, ok, resetDb } from "../db";
 
 beforeEach(resetDb);
@@ -143,6 +157,138 @@ describe("systems", () => {
     ).toMatchObject({ ok: false, error: expect.stringContaining("a password inside a URL") });
     expect(await saveSystem(null, form({ projectId: p.id, name: "Twilio", notes: "token=abcdef123456" }))).toMatchObject({
       ok: false,
+    });
+  });
+});
+
+describe("doc templates", () => {
+  it("adds unpublished pages and standard questions once, counting placeholders", async () => {
+    const p = await makeProject();
+    const template = DOC_TEMPLATES[0];
+    ok(await createDocPage(p.id, "Notes"));
+    expect(ok(await createDocsFromTemplate(p.id, template.id))).toEqual({
+      pages: template.pages.length,
+      questions: template.questions.length,
+    });
+
+    const pages = await listDocPages(p.id);
+    expect(pages.map((x) => x.title)).toEqual(["Notes", ...template.pages.map((x) => x.title)]);
+    expect(pages[0].todos).toBe(0);
+    expect(pages[1].todos).toBeGreaterThan(5);
+    expect((await db.select().from(docPages)).every((x) => !x.published)).toBe(true);
+    const first = (await getDocPage(pages[1].id))!;
+    expect(first.revisions.map((r) => r.note)).toEqual([`From template “${template.name}”`]);
+
+    // Running it again (e.g. after deleting one page) only fills the gaps.
+    await db.delete(docPages).where(eq(docPages.id, pages[2].id));
+    expect(ok(await createDocsFromTemplate(p.id, template.id))).toEqual({ pages: 1, questions: 0 });
+    expect((await listOpenQuestions(p.id)).map((q) => q.code)).toEqual(
+      template.questions.map((_, i) => `Q-${String(i + 1).padStart(2, "0")}`),
+    );
+    expect(await createDocsFromTemplate(p.id, "nope")).toEqual({ ok: false, error: "Unknown template" });
+  });
+});
+
+describe("open questions", () => {
+  it("numbers questions, refuses duplicate codes and drops/reopens", async () => {
+    const p = await makeProject();
+    ok(await saveOpenQuestion(null, form({ projectId: p.id, question: "Retention?", owner: "Anna", dueDate: "2026-11-01" })));
+    ok(await saveOpenQuestion(null, form({ projectId: p.id, question: "Error channel?", code: "q 7" })));
+    ok(await saveOpenQuestion(null, form({ projectId: p.id, question: "Who signs off?" })));
+    expect((await listOpenQuestions(p.id)).map((q) => [q.code, q.question])).toEqual([
+      ["Q-01", "Retention?"], // has a due date, so it comes first
+      ["Q-07", "Error channel?"],
+      ["Q-08", "Who signs off?"],
+    ]);
+    expect(await saveOpenQuestion(null, form({ projectId: p.id, question: "Dup", code: "Q-01" }))).toEqual({
+      ok: false,
+      error: "Q-01 is already used in this project",
+    });
+
+    const [q] = await listOpenQuestions(p.id);
+    ok(await saveOpenQuestion(q.id, form({ question: "Retention of recordings?" })));
+    expect((await listOpenQuestions(p.id))[0]).toMatchObject({ code: "Q-01", question: "Retention of recordings?" });
+
+    ok(await setOpenQuestionStatus(q.id, "dropped"));
+    let row = (await listOpenQuestions(p.id)).find((x) => x.id === q.id)!;
+    expect([row.status, row.closedOn]).toEqual(["dropped", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)]);
+    ok(await setOpenQuestionStatus(q.id, "open"));
+    row = (await listOpenQuestions(p.id)).find((x) => x.id === q.id)!;
+    expect([row.status, row.closedOn]).toEqual(["open", null]);
+    expect(await setOpenQuestionStatus(q.id, "answered")).toEqual({ ok: false, error: "Bad status" });
+  });
+
+  it("answering can log a linked decision", async () => {
+    const p = await makeProject();
+    ok(await saveOpenQuestion(null, form({ projectId: p.id, question: "Keep recordings how long?" })));
+    ok(await saveOpenQuestion(null, form({ projectId: p.id, question: "Logo colour?" })));
+    const [q1, q2] = await listOpenQuestions(p.id);
+
+    ok(
+      await answerOpenQuestion(
+        q1.id,
+        form({ answerMd: "90 days, then delete.\nAlso tell callers.", logDecision: "on", decidedBy: "Anna", decidedOn: "2026-10-20" }),
+      ),
+    );
+    ok(await answerOpenQuestion(q2.id, form({ answerMd: "Blue" })));
+
+    const [decision] = await listDecisions(p.id);
+    expect(decision).toMatchObject({
+      title: "90 days, then delete.",
+      decidedBy: "Anna",
+      decidedOn: "2026-10-20",
+      sourceNote: "Q-01",
+      detailsMd: "Q-01: Keep recordings how long?\n\n90 days, then delete.\nAlso tell callers.",
+    });
+    const rows = await listOpenQuestions(p.id);
+    expect(rows.map((q) => [q.code, q.status, q.closedOn, q.decision?.title ?? null])).toEqual([
+      ["Q-01", "answered", "2026-10-20", "90 days, then delete."],
+      ["Q-02", "answered", expect.any(String), null],
+    ]);
+    expect(await answerOpenQuestion(q2.id, form({ answerMd: "api_key=sk-abcdefabcdefabcdef1234" }))).toMatchObject({ ok: false });
+    expect(await db.select().from(openQuestions)).toHaveLength(2);
+  });
+});
+
+describe("business rules", () => {
+  it("links rules to decisions of the same project and lists retired ones last", async () => {
+    const p = await makeProject();
+    const other = await makeProject({ name: "Other" });
+    ok(await saveDecision(null, form({ projectId: p.id, title: "No prices on the phone", decidedOn: "2026-10-16" })));
+    ok(await saveDecision(null, form({ projectId: other.id, title: "Elsewhere" })));
+    const [mine] = await listDecisions(p.id);
+    const [theirs] = await listDecisions(other.id);
+
+    ok(
+      await saveBusinessRule(
+        null,
+        form({ projectId: p.id, title: "Bot never quotes prices", sourceDecisionId: mine.id, implementedIn: "main prompt" }),
+      ),
+    );
+    ok(await saveBusinessRule(null, form({ projectId: p.id, title: "Delivery = 2 working days", kind: "computation" })));
+    expect(await saveBusinessRule(null, form({ projectId: p.id, title: "X", sourceDecisionId: theirs.id }))).toEqual({
+      ok: false,
+      error: "That decision isn't in this project",
+    });
+
+    let rules = await listBusinessRules(p.id);
+    expect(rules.map((r) => [r.code, r.kind, r.sourceDecision?.title ?? null])).toEqual([
+      ["BR-01", "constraint", "No prices on the phone"],
+      ["BR-02", "computation", null],
+    ]);
+
+    ok(await setBusinessRuleRetired(rules[0].id, true));
+    rules = await listBusinessRules(p.id);
+    expect(rules.map((r) => [r.code, r.retiredAt != null])).toEqual([
+      ["BR-02", false],
+      ["BR-01", true],
+    ]);
+    // Editing keeps the code; deleting the decision keeps the rule.
+    ok(await saveBusinessRule(rules[1].id, form({ title: "Bot never quotes prices or margins" })));
+    await db.delete(decisions).where(eq(decisions.id, mine.id));
+    expect((await listBusinessRules(p.id)).find((r) => r.code === "BR-01")).toMatchObject({
+      title: "Bot never quotes prices or margins",
+      sourceDecisionId: null,
     });
   });
 });

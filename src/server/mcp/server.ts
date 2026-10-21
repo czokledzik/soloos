@@ -16,8 +16,24 @@ import {
 } from "@/db";
 import { createTask } from "@/server/actions";
 import { listFollowUps, listInteractions, listPipeline } from "@/server/crm-queries";
-import { createDocPage, saveChangeRequest, saveDecision, saveDocPage, updateProjectBrief } from "@/server/doc-actions";
-import { getDocPage, listChangeRequests, listDecisions, listDocPages, listSystems } from "@/server/doc-queries";
+import {
+  createDocPage,
+  saveBusinessRule,
+  saveChangeRequest,
+  saveDecision,
+  saveDocPage,
+  saveOpenQuestion,
+  updateProjectBrief,
+} from "@/server/doc-actions";
+import {
+  getDocPage,
+  listBusinessRules,
+  listChangeRequests,
+  listDecisions,
+  listDocPages,
+  listOpenQuestions,
+  listSystems,
+} from "@/server/doc-queries";
 import type { ActionResult } from "@/server/form";
 import { savePastedThread } from "@/server/message-actions";
 import { getThread, listThreads } from "@/server/message-queries";
@@ -29,6 +45,7 @@ const INSTRUCTIONS = `SoloOS is the user's personal ops app for freelance work: 
 Money values are in minor units (grosze/cents) unless a field says otherwise; durations are minutes.
 Start with \`search\` or \`list_projects\`, then \`get_project\` / \`get_client\` for full context. A project's brief is its short summary: read it first, keep it current with \`update_project_brief\`.
 Record agreed decisions with \`log_decision\` and scope changes with \`add_change_request\` (never approve them yourself: the user does that).
+Things still to be decided go in \`add_open_question\`; rules that hold right now ("the bot never quotes prices") go in \`save_business_rule\`, citing the decision they come from. Doc pages can cite them by code (Q-03, BR-02).
 To import a chat from a screenshot, transcribe it and call \`import_messages\`.
 Never store credentials (passwords, API keys, tokens) in SoloOS: the server refuses them.`;
 
@@ -111,18 +128,20 @@ export function createMcpServer() {
     {
       title: "Project context",
       description:
-        "Everything about one project: brief, scope and change requests, decisions, open tasks, payments, systems, doc pages and recent conversation.",
+        "Everything about one project: brief, scope and change requests, decisions, open questions, business rules, open tasks, payments, systems, doc pages and recent conversation.",
       inputSchema: { projectId: id },
       annotations: read,
     },
     async ({ projectId }) => {
       const project = await getProject(projectId);
       if (!project) return fail(`No project ${projectId}`);
-      const [taskRows, payments, crs, decs, sys, pages, thr, notes] = await Promise.all([
+      const [taskRows, payments, crs, decs, questions, rules, sys, pages, thr, notes] = await Promise.all([
         listProjectTasks(projectId),
         listPayments(projectId),
         listChangeRequests(projectId),
         listDecisions(projectId),
+        listOpenQuestions(projectId),
+        listBusinessRules(projectId),
         listSystems(projectId),
         listDocPages(projectId),
         listThreads({ projectId }, 15),
@@ -161,6 +180,20 @@ export function createMcpServer() {
           decidedBy: d.decidedBy,
           details: d.detailsMd || undefined,
         })),
+        openQuestions: questions
+          .filter((q) => q.status === "open" || q.status === "in_progress")
+          .map((q) => ({ id: q.id, code: q.code, question: q.question, owner: q.owner, dueDate: q.dueDate, status: q.status })),
+        answeredQuestions: questions.filter((q) => q.status === "answered").length,
+        businessRules: rules
+          .filter((r) => !r.retiredAt)
+          .map((r) => ({
+            id: r.id,
+            code: r.code,
+            rule: r.title,
+            kind: r.kind,
+            implementedIn: r.implementedIn,
+            details: r.detailsMd || undefined,
+          })),
         openTasks: taskRows
           .filter((t) => t.status !== "done")
           .map((t) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, dueDate: t.dueDate })),
@@ -396,6 +429,79 @@ export function createMcpServer() {
         ),
         () => ({ ok: true }),
       ),
+  );
+
+  server.registerTool(
+    "add_open_question",
+    {
+      title: "Add an open question",
+      description:
+        "Log something that still has to be decided on a project, with who has to answer it. The user records the answer in SoloOS.",
+      inputSchema: {
+        projectId: id,
+        question: z.string().min(1).max(500),
+        details: z.string().max(10_000).optional().describe("Context, options (markdown)"),
+        owner: z.string().max(200).optional().describe("Who has to answer, e.g. 'Anna (client)'"),
+        whereInDocs: z.string().max(300).optional().describe("Doc page / section it affects"),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("yyyy-MM-dd, when the answer is needed"),
+      },
+      annotations: write,
+    },
+    async (a) =>
+      result(
+        await saveOpenQuestion(
+          null,
+          fd({
+            projectId: a.projectId,
+            question: a.question,
+            detailsMd: a.details,
+            owner: a.owner,
+            whereInDocs: a.whereInDocs,
+            dueDate: a.dueDate,
+          }),
+        ),
+        () => ({ ok: true }),
+      ),
+  );
+
+  server.registerTool(
+    "save_business_rule",
+    {
+      title: "Add or update a business rule",
+      description:
+        "A rule that holds on a project right now (what the system must or must never do, how something is calculated). Pass ruleId to update one.",
+      inputSchema: {
+        projectId: id,
+        ruleId: id.optional(),
+        rule: z.string().min(1).max(500).describe("The rule, as one sentence"),
+        kind: z.enum(["constraint", "action", "inference", "computation", "fact"]).optional(),
+        details: z.string().max(10_000).optional().describe("Exceptions, examples (markdown)"),
+        implementedIn: z.string().max(300).optional().describe("Where it's enforced: prompt, workflow, node…"),
+        sourceDecisionId: id.optional().describe("Decision the rule comes from (see get_project)"),
+        sourceNote: z.string().max(500).optional(),
+      },
+      annotations: write,
+    },
+    async (a) => {
+      // On update, fields left out keep their current value.
+      const existing = a.ruleId ? (await listBusinessRules(a.projectId)).find((r) => r.id === a.ruleId) : undefined;
+      if (a.ruleId && !existing) return fail(`Rule ${a.ruleId} isn't in project ${a.projectId}`);
+      return result(
+        await saveBusinessRule(
+          a.ruleId ?? null,
+          fd({
+            projectId: a.projectId,
+            title: a.rule,
+            kind: a.kind ?? existing?.kind,
+            detailsMd: a.details ?? existing?.detailsMd,
+            implementedIn: a.implementedIn ?? existing?.implementedIn,
+            sourceDecisionId: a.sourceDecisionId ?? existing?.sourceDecisionId,
+            sourceNote: a.sourceNote ?? existing?.sourceNote,
+          }),
+        ),
+        () => ({ ok: true }),
+      );
+    },
   );
 
   server.registerTool(

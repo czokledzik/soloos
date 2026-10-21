@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { ExternalLinkIcon, HistoryIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, FilesIcon, HistoryIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import {
   archiveDocPage,
   createDocPage,
+  createDocsFromTemplate,
   deleteSystem,
   restoreRevision,
   saveDocPage,
@@ -46,6 +48,38 @@ export function NewDocPageButton({ projectId }: { projectId: number }) {
       <PlusIcon /> New page
     </Button>
   );
+}
+
+export type TemplateOption = { id: string; name: string; description: string; pages: number; questions: number };
+
+export function DocTemplateButtons({ projectId, templates }: { projectId: number; templates: TemplateOption[] }) {
+  const router = useRouter();
+  const { pending, exec } = useAction();
+  return templates.map((t) => (
+    <Button
+      key={t.id}
+      size="sm"
+      variant="ghost"
+      className="justify-start"
+      title={t.description}
+      disabled={pending}
+      onClick={async () => {
+        if (
+          !confirm(
+            `Add ${t.pages} pages and ${t.questions} open questions from “${t.name}”? Pages and questions the project already has are skipped. New pages stay unpublished.`,
+          )
+        )
+          return;
+        const res = await exec(() => createDocsFromTemplate(projectId, t.id));
+        if (res.ok && res.data) {
+          toast.success(`Added ${res.data.pages} pages and ${res.data.questions} open questions`);
+          router.refresh();
+        }
+      }}
+    >
+      <FilesIcon /> From template
+    </Button>
+  ));
 }
 
 export function DocPageView({ page, projectId }: { page: DocPageDetail; projectId: number }) {
@@ -292,21 +326,29 @@ export function DocPageList({
   current,
 }: {
   projectId: number;
-  pages: { id: number; title: string }[];
+  pages: { id: number; title: string; todos: number }[];
   current: number | null;
 }) {
   return (
-    <nav className="grid gap-0.5 text-sm">
+    <nav className="grid min-w-0 gap-0.5 text-sm">
       {pages.map((p) => (
         <Link
           key={p.id}
           href={`/projects/${projectId}/docs?page=${p.id}`}
           className={cn(
-            "truncate rounded-md px-2 py-1",
+            "flex min-w-0 items-center gap-1 overflow-hidden rounded-md px-2 py-1",
             p.id === current ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {p.title}
+          <span className="min-w-0 truncate">{p.title}</span>
+          {p.todos > 0 && (
+            <span
+              className="ml-auto shrink-0 rounded bg-amber-500/15 px-1 text-xs font-normal text-amber-700 tabular-nums dark:text-amber-400"
+              title={`${p.todos} placeholders left to fill`}
+            >
+              {p.todos}
+            </span>
+          )}
         </Link>
       ))}
     </nav>
