@@ -17,8 +17,8 @@ export function PortalThemeToggle() {
     <Button
       variant="outline"
       size="icon-sm"
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      title={dark ? "Light mode" : "Dark mode"}
+      aria-label={dark ? "Przełącz na jasny motyw" : "Przełącz na ciemny motyw"}
+      title={dark ? "Jasny motyw" : "Ciemny motyw"}
       onClick={() => setTheme(dark ? "light" : "dark")}
     >
       {dark ? <SunIcon /> : <MoonIcon />}
@@ -52,14 +52,14 @@ export function PrintToolbar({ backHref }: { backHref: string }) {
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 p-3 text-sm print:hidden">
-      <span className="text-muted-foreground">In the print dialog choose “Save as PDF”.</span>
+      <span className="text-muted-foreground">W oknie drukowania wybierz „Zapisz jako PDF”.</span>
       <div className="flex gap-2">
         <a href={backHref} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-          Back
+          Wróć
         </a>
         <Button size="sm" onClick={() => window.print()}>
           <PrinterIcon />
-          Save as PDF
+          Zapisz jako PDF
         </Button>
       </div>
     </div>

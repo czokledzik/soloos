@@ -9,7 +9,10 @@ export default async function ProjectPortalPage({ params }: PageProps<"/projects
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const [project, updates, pages] = await Promise.all([
-    db.query.projects.findFirst({ where: eq(projects.id, id), columns: { portalToken: true } }),
+    db.query.projects.findFirst({
+      where: eq(projects.id, id),
+      columns: { portalToken: true, portalProgress: true, portalHours: true, portalDecisions: true },
+    }),
     listProjectUpdates(id),
     db
       .select({ id: docPages.id, title: docPages.title, published: docPages.published })
@@ -21,7 +24,12 @@ export default async function ProjectPortalPage({ params }: PageProps<"/projects
   return (
     <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="grid content-start gap-6">
-        <PortalLink projectId={id} token={project.portalToken} origin={await requestOrigin()} />
+        <PortalLink
+          projectId={id}
+          token={project.portalToken}
+          origin={await requestOrigin()}
+          sections={{ progress: project.portalProgress, hours: project.portalHours, decisions: project.portalDecisions }}
+        />
         <ProjectUpdates projectId={id} updates={updates} />
       </div>
       <PortalDocs pages={pages} />

@@ -64,6 +64,13 @@
       "when": 1792567567994,
       "tag": "0008_rules_and_questions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792609954573,
+      "tag": "0009_portal_sections",
+      "breakpoints": true
     }
   ]
 }

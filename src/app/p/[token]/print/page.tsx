@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps<"/p/[token]/print">): Promise<Metadata> {
   const portal = await getPortal((await params).token);
   return {
-    title: { absolute: portal ? portalTitle(portal) : "Project status" },
+    title: { absolute: portal ? portalTitle(portal) : "Status projektu" },
     robots: { index: false, follow: false },
   };
 }

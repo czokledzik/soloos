@@ -10,6 +10,8 @@ test.beforeAll(async () => {
   projectId = p.id;
   await sql`insert into tasks (project_id, title, status) values (${projectId}, 'Done task', 'done'), (${projectId}, 'Open task', 'todo')`;
   await sql`insert into doc_pages (project_id, title, body_md) values (${projectId}, 'Architecture', ${"```mermaid\nflowchart LR\n  Client --> Portal\n```"}), (${projectId}, 'Secret plan', 'do not show')`;
+  await sql`insert into time_entries (project_id, started_at, ended_at, duration_min, note, rate_snapshot) values (${projectId}, '2026-10-01 10:00+02', '2026-10-01 11:30+02', 90, 'Formularz rezerwacji', 33300)`;
+  await sql`insert into decisions (project_id, decided_on, title, decided_by, source_note) values (${projectId}, '2026-10-02', 'Płatności przez Przelewy24', 'both', 'SOURCE NOTE')`;
 });
 
 test("publish an update and a diagram, the client sees only those", async ({ page, browser }) => {
@@ -26,19 +28,27 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
   await page.getByRole("button", { name: "Publish" }).click();
   await expect(page.getByText(/^Published /)).toBeVisible();
   await page.getByLabel("Architecture").check();
+  // Optional sections: progress and decisions now, the hours report later.
+  await page.getByLabel(/Task progress/).check();
+  await page.getByLabel(/Decision log/).check();
+  await expect(page.getByLabel(/Decision log/)).toBeChecked();
 
   // A different browser with no session.
   const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const client = await anon.newPage();
   await client.goto(link);
   await expect(client.getByRole("heading", { name: "Portal demo" })).toBeVisible();
-  await expect(client.getByText("1 of 2 tasks done")).toBeVisible();
+  await expect(client.getByText("ukończone 1 z 2")).toBeVisible();
   await expect(client.getByRole("heading", { name: "Week 1" })).toBeVisible();
   await expect(client.locator("strong", { hasText: "done" })).toBeVisible();
 
-  // Each published doc is its own tab.
-  const sections = client.getByRole("navigation", { name: "Sections" });
-  await expect(sections.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+  // Each section and published doc is its own tab.
+  const sections = client.getByRole("navigation", { name: "Sekcje" });
+  await expect(sections.getByRole("link", { name: "Przegląd" })).toHaveAttribute("aria-current", "page");
+  await expect(sections.getByRole("link", { name: "Raport godzin" })).toHaveCount(0);
+  await sections.getByRole("link", { name: "Decyzje" }).click();
+  await expect(client.getByRole("heading", { name: "Płatności przez Przelewy24" })).toBeVisible();
+  await expect(client.getByText(/2 października 2026 · wspólnie/)).toBeVisible();
   await sections.getByRole("link", { name: "Architecture" }).click();
   await expect(client).toHaveURL(/\?tab=\d+$/);
   await expect(client.getByRole("heading", { name: "Week 1" })).toBeHidden();
@@ -46,13 +56,13 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
 
   // Light by default; the switch is remembered for the portal only.
   await expect(client.locator("html")).toHaveClass(/\blight\b/);
-  await client.getByRole("button", { name: "Switch to dark mode" }).click();
+  await client.getByRole("button", { name: "Przełącz na ciemny motyw" }).click();
   await expect(client.locator("html")).toHaveClass(/\bdark\b/);
   await client.reload();
   await expect(client.locator("html")).toHaveClass(/\bdark\b/);
 
   // The PDF view has everything on one page, always light, diagrams drawn without pan/zoom.
-  await client.getByRole("link", { name: "Download PDF" }).click();
+  await client.getByRole("link", { name: "Pobierz PDF" }).click();
   await expect(client).toHaveURL(/\/print$/);
   await expect(client).toHaveTitle("Portal demo — Portal Client");
   await expect(client.locator("html")).toHaveClass(/\blight\b/);
@@ -60,14 +70,25 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
   // The PDF is the documentation only: no progress or updates.
   await expect(client.getByRole("heading", { name: "Week 1" })).toHaveCount(0);
   await expect(client.locator("svg[id^=mmd-] >> text=Portal")).toBeVisible();
-  await expect(client.getByRole("button", { name: "Save as PDF" })).toBeVisible();
+  await expect(client.getByRole("button", { name: "Zapisz jako PDF" })).toBeVisible();
   const printHtml = await client.content();
   for (const hidden of ["INTERNAL NOTE", "Secret plan", "do not show", "Open task"]) expect(printHtml).not.toContain(hidden);
-  await client.getByRole("link", { name: "Back" }).click();
+  await client.getByRole("link", { name: "Wróć" }).click();
   // Neither the page nor the serialized React payload in it carries internal data.
   const html = await client.content();
-  for (const hidden of ["INTERNAL NOTE", "Secret plan", "do not show", "Open task"]) expect(html).not.toContain(hidden);
+  for (const hidden of ["INTERNAL NOTE", "Secret plan", "do not show", "Open task", "SOURCE NOTE", "Formularz rezerwacji"]) {
+    expect(html).not.toContain(hidden);
+  }
   expect(await client.locator("body").innerText()).not.toContain("333,00");
+
+  // The hours report shows the work, its value and the rate once switched on.
+  await page.getByLabel(/Hours report/).check();
+  await expect(page.getByLabel(/Hours report/)).toBeChecked();
+  await client.goto(`${link}?tab=hours`);
+  await expect(client.getByText("Formularz rezerwacji")).toBeVisible();
+  await expect(client.getByText("1 h 30 min").first()).toBeVisible();
+  await expect(client.getByText(/stawka 333,00/)).toBeVisible();
+  await expect(client.getByText("Wartość prac")).toBeVisible();
   expect(await client.locator('meta[name="robots"]').getAttribute("content")).toContain("noindex");
 
   // The rest of the app stays locked for the anonymous visitor.

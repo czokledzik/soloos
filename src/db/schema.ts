@@ -129,6 +129,10 @@ export const projects = pgTable(
     scopeBaselinedAt: timestamp({ withTimezone: true }),
     // Secret for the read-only client portal at /p/<token>; null = portal off.
     portalToken: text().unique(),
+    // Optional portal sections, off until switched on per project.
+    portalProgress: boolean().notNull().default(false),
+    portalHours: boolean().notNull().default(false), // hours, value and payments
+    portalDecisions: boolean().notNull().default(false),
     archivedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
