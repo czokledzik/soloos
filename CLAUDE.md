@@ -14,7 +14,8 @@
   every submit, which wiped user input when an action returned a validation error.
 - Never store credentials: free-text that could hold one goes through `findSecret` (`src/lib/secrets.ts`).
 - Other mutations/reads: `message-actions.ts`/`message-queries.ts` (threads), `doc-actions.ts`/`doc-queries.ts`
-  (brief, scope, decisions, change requests, doc pages, systems), `portal-*.ts`, `ai-actions.ts` + `src/server/ai/`,
+  (brief, scope, decisions, change requests, open questions, business rules, doc pages, doc templates from
+  `src/lib/doc-templates.ts`, systems), `portal-*.ts`, `ai-actions.ts` + `src/server/ai/`,
   `src/server/mcp/` (MCP server + OAuth), `email.ts`/`email-sync.ts` (IMAP).
 - Routes outside the login (`/api/mcp`, `/oauth/*`, `/.well-known/*`, `/api/cron/*`, `/api/ai/runner/*`, `/p/*`) check
   their own credentials; they're listed in `src/proxy.ts`.

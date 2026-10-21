@@ -31,6 +31,7 @@ describe("MCP tools", () => {
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
       "add_change_request",
+      "add_open_question",
       "create_task",
       "get_client",
       "get_doc_page",
@@ -41,6 +42,7 @@ describe("MCP tools", () => {
       "list_projects",
       "log_decision",
       "recent_messages",
+      "save_business_rule",
       "save_doc_page",
       "search",
       "update_project_brief",
@@ -108,6 +110,31 @@ describe("MCP tools", () => {
     expect(await db.select().from(tasks)).toHaveLength(1);
   });
 
+  it("records open questions and business rules, and updates a rule without losing fields", async () => {
+    const project = await makeProject();
+    expect(await call("add_open_question", { projectId: project.id, question: "Keep recordings how long?", owner: "Anna" })).toEqual({
+      ok: true,
+    });
+    expect(
+      await call("save_business_rule", { projectId: project.id, rule: "Never quote prices", implementedIn: "main prompt" }),
+    ).toEqual({ ok: true });
+    let ctx = await call("get_project", { projectId: project.id });
+    expect(ctx.openQuestions).toMatchObject([{ code: "Q-01", question: "Keep recordings how long?", owner: "Anna" }]);
+    expect(ctx.businessRules).toMatchObject([{ code: "BR-01", rule: "Never quote prices", implementedIn: "main prompt" }]);
+
+    const ruleId = ctx.businessRules[0].id;
+    expect(await call("save_business_rule", { projectId: project.id, ruleId, rule: "Never quote prices or margins" })).toEqual({
+      ok: true,
+    });
+    ctx = await call("get_project", { projectId: project.id });
+    expect(ctx.businessRules).toMatchObject([{ code: "BR-01", rule: "Never quote prices or margins", implementedIn: "main prompt" }]);
+
+    const other = await makeProject({ name: "Other" });
+    expect(await call("save_business_rule", { projectId: other.id, ruleId, rule: "x" })).toEqual({
+      error: `Rule ${ruleId} isn't in project ${other.id}`,
+    });
+  });
+
   it("returns errors as tool errors", async () => {
     expect(await call("get_project", { projectId: 999 })).toEqual({ error: "No project 999" });
     const project = await makeProject();
@@ -166,6 +193,6 @@ describe("/api/mcp route", () => {
     expect(body.result.instructions).toContain("SoloOS");
 
     const list = await POST(rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }, `Bearer ${"t".repeat(32)}`));
-    expect((await list.json()).result.tools.length).toBe(14);
+    expect((await list.json()).result.tools.length).toBe(16);
   });
 });

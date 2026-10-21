@@ -90,3 +90,44 @@ test("systems take links but refuse credentials", async ({ page }) => {
   await card.getByRole("button", { name: "Save" }).click();
   await expect(card.getByRole("link", { name: "n8n booking flow" })).toHaveAttribute("href", "https://n8n.example.com/workflow/12");
 });
+
+test("doc template adds pages with a placeholder count and starter questions", async ({ page }) => {
+  await page.goto(`/projects/${projectId}/docs`);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "From template" }).click();
+  await expect(page.getByText(/Added \d+ pages and \d+ open questions/)).toBeVisible();
+  const link = page.getByRole("link", { name: /1\. Przegląd i architektura/ });
+  await link.click();
+  await expect(page.getByRole("heading", { name: "Przed i po wdrożeniu" })).toBeVisible();
+  await expect(link.getByTitle(/placeholders left to fill/)).toBeVisible();
+});
+
+test("open question answered into a decision, then a rule cites it", async ({ page }) => {
+  await page.goto(`/projects/${projectId}/rules`);
+  const questions = page.locator("section", { has: page.getByRole("heading", { name: "Open questions" }) });
+  await questions.getByRole("button", { name: "Add" }).click();
+  await questions.getByLabel("Question").fill("Do SMS reminders go out on Sundays?");
+  await questions.getByLabel("Who answers").fill("Dr Kowalska");
+  await questions.getByRole("button", { name: "Add question" }).click();
+  const item = questions.getByRole("listitem").filter({ hasText: "SMS reminders go out on Sundays" });
+  await expect(item).toContainText("asks Dr Kowalska");
+
+  await item.getByRole("button", { name: "Answer" }).click();
+  await item.getByLabel("Answer", { exact: true }).fill("No reminders on Sundays or public holidays");
+  await item.getByRole("button", { name: "Save answer" }).click();
+  await expect(item.getByText("Answered", { exact: true })).toBeVisible();
+  await expect(item.getByRole("link", { name: /Decision: No reminders on Sundays/ })).toBeVisible();
+
+  const rules = page.locator("section", { has: page.getByRole("heading", { name: "Business rules" }) });
+  await rules.getByRole("button", { name: "Add" }).click();
+  await rules.getByLabel("Rule").fill("Reminders only Monday to Saturday, never on public holidays");
+  const source = rules.getByLabel("From decision");
+  await source.selectOption((await source.locator("option", { hasText: "No reminders on Sundays" }).getAttribute("value"))!);
+  await rules.getByRole("button", { name: "Add rule" }).click();
+  const rule = rules.getByRole("listitem").filter({ hasText: "Monday to Saturday" });
+  await expect(rule).toContainText("BR-01");
+  await expect(rule).toContainText("not mapped to where it's implemented");
+
+  await page.goto(`/projects/${projectId}/scope`);
+  await expect(page.getByText("No reminders on Sundays or public holidays").first()).toBeVisible();
+});

@@ -1,20 +1,25 @@
 "use server";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
+  businessRules,
   changeRequestStatus,
   changeRequests,
   db,
   decisions,
   docPages,
   docRevisions,
+  openQuestionStatus,
+  openQuestions,
   projects,
+  ruleKind,
   systemKind,
   systems,
 } from "@/db";
+import { DOC_TEMPLATES } from "@/lib/doc-templates";
 import { parseDuration, toDateString } from "@/lib/format";
 import { findSecret } from "@/lib/secrets";
-import { ActionError, int, money, oneOf, reqStr, run, str } from "./form";
+import { ActionError, bool, int, money, oneOf, reqStr, run, str } from "./form";
 import { refreshAll } from "./refresh";
 
 /** Saves to a page within this window update its latest revision instead of adding one. */
@@ -267,6 +272,220 @@ export async function saveSystem(id: number | null, fd: FormData) {
 export async function deleteSystem(id: number) {
   return run(async () => {
     await db.delete(systems).where(eq(systems.id, id));
+    refreshAll();
+  });
+}
+
+// ---------- Doc templates ----------
+
+/**
+ * Adds a template's pages (unpublished, so placeholders never reach the portal) and its standard open
+ * questions. Pages and questions the project already has, by title or text, are skipped.
+ */
+export async function createDocsFromTemplate(projectId: number, templateId: string) {
+  return run(async () => {
+    const template = DOC_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) throw new ActionError("Unknown template");
+    const project = await db.query.projects.findFirst({ where: eq(projects.id, projectId) });
+    if (!project) throw new ActionError("Project not found");
+    const added = await db.transaction(async (tx) => {
+      const pages = await tx
+        .select({ title: docPages.title, sortOrder: docPages.sortOrder })
+        .from(docPages)
+        .where(and(eq(docPages.projectId, projectId), isNull(docPages.archivedAt)));
+      const titles = new Set(pages.map((p) => p.title.trim().toLowerCase()));
+      let sortOrder = Math.max(0, ...pages.map((p) => p.sortOrder));
+      let pageCount = 0;
+      for (const page of template.pages) {
+        if (titles.has(page.title.toLowerCase())) continue;
+        sortOrder += 1000;
+        const [row] = await tx
+          .insert(docPages)
+          .values({ projectId, title: page.title, bodyMd: page.bodyMd, sortOrder })
+          .returning({ id: docPages.id });
+        await tx.insert(docRevisions).values({ pageId: row.id, title: page.title, bodyMd: page.bodyMd, note: `From template “${template.name}”` });
+        pageCount++;
+      }
+
+      const existing = await tx
+        .select({ code: openQuestions.code, question: openQuestions.question })
+        .from(openQuestions)
+        .where(eq(openQuestions.projectId, projectId));
+      const asked = new Set(existing.map((q) => q.question.trim().toLowerCase()));
+      const codes = existing.map((q) => q.code);
+      let questionCount = 0;
+      for (const q of template.questions) {
+        if (asked.has(q.question.toLowerCase())) continue;
+        const code = nextCode(codes, "Q");
+        codes.push(code);
+        await tx.insert(openQuestions).values({
+          projectId,
+          code,
+          question: q.question,
+          detailsMd: q.detailsMd ?? "",
+          owner: q.owner ?? null,
+          whereInDocs: q.whereInDocs ?? null,
+          askedOn: toDateString(new Date()),
+        });
+        questionCount++;
+      }
+      return { pages: pageCount, questions: questionCount };
+    });
+    refreshAll();
+    return added;
+  });
+}
+
+// ---------- Business rules and open questions ----------
+
+/** Next free code with this prefix: BR-01, BR-02… (gaps from deleted rows aren't reused). */
+function nextCode(existing: string[], prefix: string) {
+  const re = new RegExp(`^${prefix}-(\\d+)$`, "i");
+  const max = Math.max(0, ...existing.map((c) => Number(re.exec(c)?.[1] ?? 0)));
+  return `${prefix}-${String(max + 1).padStart(2, "0")}`;
+}
+
+/** The code from the form (upper-cased), or the next free one; refuses one used by another row. */
+async function pickCode(
+  table: typeof businessRules | typeof openQuestions,
+  projectId: number,
+  id: number | null,
+  wanted: string | null,
+  prefix: string,
+) {
+  const rows = await db.select({ id: table.id, code: table.code }).from(table).where(eq(table.projectId, projectId));
+  if (!wanted) {
+    const own = id ? rows.find((r) => r.id === id) : undefined;
+    return own?.code ?? nextCode(rows.map((r) => r.code), prefix);
+  }
+  // "q 7" → "Q-07", so codes sort in order.
+  const code = wanted
+    .toUpperCase()
+    .replace(/\s+/g, "-")
+    .replace(/^([A-Z]+)-?(\d+)$/, (_, p: string, n: string) => `${p}-${n.padStart(2, "0")}`);
+  if (rows.some((r) => r.code === code && r.id !== id)) throw new ActionError(`${code} is already used in this project`);
+  return code;
+}
+
+async function projectOf(table: typeof businessRules | typeof openQuestions, id: number) {
+  const [row] = await db.select({ projectId: table.projectId }).from(table).where(eq(table.id, id));
+  if (!row) throw new ActionError("Not found");
+  return row.projectId;
+}
+
+async function decisionInProject(decisionId: number | null, projectId: number) {
+  if (decisionId == null) return null;
+  const d = await db.query.decisions.findFirst({ where: eq(decisions.id, decisionId), columns: { projectId: true } });
+  if (!d || d.projectId !== projectId) throw new ActionError("That decision isn't in this project");
+  return decisionId;
+}
+
+export async function saveBusinessRule(id: number | null, fd: FormData) {
+  return run(async () => {
+    const projectId = id ? await projectOf(businessRules, id) : int(fd, "projectId");
+    if (!projectId) throw new ActionError("Missing project");
+    const values = {
+      code: await pickCode(businessRules, projectId, id, str(fd, "code"), "BR"),
+      title: reqStr(fd, "title"),
+      kind: oneOf(fd, "kind", ruleKind.enumValues) ?? "constraint",
+      detailsMd: str(fd, "detailsMd") ?? "",
+      implementedIn: str(fd, "implementedIn"),
+      sourceDecisionId: await decisionInProject(int(fd, "sourceDecisionId"), projectId),
+      sourceNote: str(fd, "sourceNote"),
+    };
+    noSecrets(values.title, values.detailsMd, values.implementedIn, values.sourceNote);
+    if (id) await db.update(businessRules).set(values).where(eq(businessRules.id, id));
+    else await db.insert(businessRules).values({ projectId, ...values });
+    refreshAll();
+  });
+}
+
+/** Retired rules stay listed (struck through) so their codes keep meaning something. */
+export async function setBusinessRuleRetired(id: number, retired: boolean) {
+  return run(async () => {
+    await db.update(businessRules).set({ retiredAt: retired ? new Date() : null }).where(eq(businessRules.id, id));
+    refreshAll();
+  });
+}
+
+export async function deleteBusinessRule(id: number) {
+  return run(async () => {
+    await db.delete(businessRules).where(eq(businessRules.id, id));
+    refreshAll();
+  });
+}
+
+export async function saveOpenQuestion(id: number | null, fd: FormData) {
+  return run(async () => {
+    const projectId = id ? await projectOf(openQuestions, id) : int(fd, "projectId");
+    if (!projectId) throw new ActionError("Missing project");
+    const values = {
+      code: await pickCode(openQuestions, projectId, id, str(fd, "code"), "Q"),
+      question: reqStr(fd, "question"),
+      detailsMd: str(fd, "detailsMd") ?? "",
+      owner: str(fd, "owner"),
+      whereInDocs: str(fd, "whereInDocs"),
+      askedOn: str(fd, "askedOn") ?? toDateString(new Date()),
+      dueDate: str(fd, "dueDate"),
+    };
+    noSecrets(values.question, values.detailsMd, values.whereInDocs);
+    if (id) await db.update(openQuestions).set(values).where(eq(openQuestions.id, id));
+    else await db.insert(openQuestions).values({ projectId, ...values });
+    refreshAll();
+  });
+}
+
+/** Open, in progress or dropped. Answering goes through answerOpenQuestion. */
+export async function setOpenQuestionStatus(id: number, status: (typeof openQuestionStatus.enumValues)[number]) {
+  return run(async () => {
+    if (!openQuestionStatus.enumValues.includes(status) || status === "answered") throw new ActionError("Bad status");
+    await db
+      .update(openQuestions)
+      .set({ status, closedOn: status === "dropped" ? toDateString(new Date()) : null })
+      .where(eq(openQuestions.id, id));
+    refreshAll();
+  });
+}
+
+/** Records the answer; with `logDecision` it also goes into the decision log, linked both ways. */
+export async function answerOpenQuestion(id: number, fd: FormData) {
+  return run(async () => {
+    const answerMd = reqStr(fd, "answerMd");
+    const decidedOn = str(fd, "decidedOn") ?? toDateString(new Date());
+    const decidedBy = str(fd, "decidedBy");
+    noSecrets(answerMd, decidedBy);
+    await db.transaction(async (tx) => {
+      const q = await tx.query.openQuestions.findFirst({ where: eq(openQuestions.id, id) });
+      if (!q) throw new ActionError("Question not found");
+      let decisionId = q.decisionId;
+      if (bool(fd, "logDecision")) {
+        const title = str(fd, "decisionTitle") ?? answerMd.split("\n")[0].slice(0, 300);
+        noSecrets(title);
+        const [d] = await tx
+          .insert(decisions)
+          .values({
+            projectId: q.projectId,
+            decidedOn,
+            title,
+            detailsMd: `${q.code}: ${q.question}\n\n${answerMd}`,
+            decidedBy,
+            sourceNote: q.code,
+          })
+          .returning({ id: decisions.id });
+        decisionId = d.id;
+      }
+      await tx
+        .update(openQuestions)
+        .set({ status: "answered", answerMd, closedOn: decidedOn, decisionId })
+        .where(eq(openQuestions.id, id));
+    });
+    refreshAll();
+  });
+}
+
+export async function deleteOpenQuestion(id: number) {
+  return run(async () => {
+    await db.delete(openQuestions).where(eq(openQuestions.id, id));
     refreshAll();
   });
 }

@@ -447,6 +447,59 @@ export const systems = pgTable(
   (t) => [index().on(t.projectId)],
 );
 
+// Wiegers' business rule types: what is true, what is forbidden, what is allowed to happen,
+// what follows from what, and what is calculated.
+export const ruleKind = pgEnum("rule_kind", ["fact", "constraint", "action", "inference", "computation"]);
+
+/** Rules currently in force ("the bot never quotes prices"), with the decision they came from. */
+export const businessRules = pgTable(
+  "business_rules",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    code: text().notNull(), // "BR-01", stable so docs and prompts can cite it
+    title: text().notNull(),
+    kind: ruleKind().notNull().default("constraint"),
+    detailsMd: text().notNull().default(""),
+    implementedIn: text(), // free text: "main prompt, invoices-general"
+    sourceDecisionId: integer().references(() => decisions.id, { onDelete: "set null" }),
+    sourceNote: text(),
+    retiredAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique().on(t.projectId, t.code)],
+);
+
+export const openQuestionStatus = pgEnum("open_question_status", ["open", "in_progress", "answered", "dropped"]);
+
+/** Things nobody has decided yet (Wiegers' TBD list). Answering one can log a decision. */
+export const openQuestions = pgTable(
+  "open_questions",
+  {
+    id: id(),
+    projectId: integer()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    code: text().notNull(), // "Q-01"
+    question: text().notNull(),
+    detailsMd: text().notNull().default(""),
+    owner: text(), // who has to answer: "Anna (client)", "me"
+    whereInDocs: text(), // "2. Call flow, diagram 5"
+    askedOn: date().notNull(),
+    dueDate: date(),
+    status: openQuestionStatus().notNull().default("open"),
+    answerMd: text().notNull().default(""),
+    closedOn: date(),
+    decisionId: integer().references(() => decisions.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique().on(t.projectId, t.code), index().on(t.projectId, t.status)],
+);
+
 // ---------- AI ----------
 
 // Files attached to a client, optionally to one of its projects (proposals, contracts, specs).
@@ -533,6 +586,8 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   changeRequests: many(changeRequests),
   docPages: many(docPages),
   systems: many(systems),
+  businessRules: many(businessRules),
+  openQuestions: many(openQuestions),
   updates: many(projectUpdates),
   attachments: many(attachments),
 }));
@@ -563,6 +618,16 @@ export const docRevisionsRelations = relations(docRevisions, ({ one }) => ({
 
 export const systemsRelations = relations(systems, ({ one }) => ({
   project: one(projects, { fields: [systems.projectId], references: [projects.id] }),
+}));
+
+export const businessRulesRelations = relations(businessRules, ({ one }) => ({
+  project: one(projects, { fields: [businessRules.projectId], references: [projects.id] }),
+  sourceDecision: one(decisions, { fields: [businessRules.sourceDecisionId], references: [decisions.id] }),
+}));
+
+export const openQuestionsRelations = relations(openQuestions, ({ one }) => ({
+  project: one(projects, { fields: [openQuestions.projectId], references: [projects.id] }),
+  decision: one(decisions, { fields: [openQuestions.decisionId], references: [decisions.id] }),
 }));
 
 export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
@@ -638,6 +703,8 @@ export type Message = typeof messages.$inferSelect;
 export type Decision = typeof decisions.$inferSelect;
 export type ChangeRequest = typeof changeRequests.$inferSelect;
 export type DocPage = typeof docPages.$inferSelect;
+export type BusinessRule = typeof businessRules.$inferSelect;
+export type OpenQuestion = typeof openQuestions.$inferSelect;
 export type DocRevision = typeof docRevisions.$inferSelect;
 export type ProjectSystem = typeof systems.$inferSelect;
 export type ProjectUpdate = typeof projectUpdates.$inferSelect;

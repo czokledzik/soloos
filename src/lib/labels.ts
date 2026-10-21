@@ -118,3 +118,18 @@ export const CHANGE_REQUEST_STATUSES = [
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ] as const;
+
+export const RULE_KINDS = [
+  { value: "constraint", label: "Constraint", hint: "must or must not happen" },
+  { value: "action", label: "Action enabler", hint: "when X, do Y" },
+  { value: "inference", label: "Inference", hint: "if X, then it is Y" },
+  { value: "computation", label: "Computation", hint: "how a value is calculated" },
+  { value: "fact", label: "Fact", hint: "true about the business" },
+] as const;
+
+export const OPEN_QUESTION_STATUSES = [
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In progress" },
+  { value: "answered", label: "Answered" },
+  { value: "dropped", label: "Dropped" },
+] as const;

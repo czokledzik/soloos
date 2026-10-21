@@ -127,6 +127,8 @@ Keep it separate for now.
    - Doc pages with revision history; Mermaid diagrams rendered with pan and zoom.
    - Systems list: links to repos, n8n workflows, ElevenLabs agents, Twilio, Baserow. Never credentials.
    - Code, n8n workflow JSON and agent configs stay in git; SoloOS links to them.
+   - (2026-10-21) Open questions (Wiegers' TBD list: who answers, needed by; answering can log a decision) and business rules (rules in force, typed as in Wiegers, linked to the decision they come from and to where they're implemented). Codes (Q-01, BR-01) so doc pages and prompts can cite them.
+   - (2026-10-21) Doc templates (`src/lib/doc-templates.ts`): a Polish automation / AI handover set (architecture, flow, workflows, data, security and GDPR, client manual, incidents, costs, acceptance tests, risks) plus starter open questions. Pages start unpublished; the docs list counts the "[DO UZUPEŁNIENIA" placeholders left.
 5. ~~**MCP server**~~ (done 2026-10-10) so Claude (Claude.ai, mobile, Claude Code) can use SoloOS on the user's subscription: search, client and project context, screenshot import, process new messages, update the brief, decision log and diagrams.
 6. ~~**In-app AI buttons**~~ (done 2026-10-10) behind a provider setting: API key by default; optional local Claude Code runner (the user's own CLI on an always-on machine, polling a jobs table).
 7. ~~**Client portal**~~ (done 2026-10-10) (`/p/<token>`): progress, published updates and zoomable diagrams (read-only, always the latest version). The portal never triggers AI.
