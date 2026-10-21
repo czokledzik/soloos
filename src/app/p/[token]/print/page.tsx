@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
 import { PrintToolbar } from "@/components/app/portal-controls";
-import { PortalDoc, PortalHeader, PortalOverview, hasOverview, portalTitle } from "@/components/app/portal-sections";
+import { PortalDoc, PrintCover, portalTitle } from "@/components/app/portal-sections";
 import { getPortal } from "@/server/portal-queries";
 
 export const dynamic = "force-dynamic";
@@ -24,32 +23,13 @@ export default async function PortalPrintPage({ params }: PageProps<"/p/[token]/
 
   return (
     // Plain block layout: browsers split grid/flex containers across pages less reliably.
-    <div className="mx-auto max-w-4xl space-y-8 px-6 py-8 [print-color-adjust:exact] print:max-w-none print:p-0">
-      <style>{"@page { size: A4; margin: 14mm; }"}</style>
+    // Zero page margins stop Chrome printing its URL/date header and footer (the URL carries the
+    // portal token); the padding, repeated on every page by box-decoration-break, is the margin instead.
+    <div className="mx-auto max-w-4xl space-y-8 px-6 py-8 [print-color-adjust:exact] print:max-w-none print:p-[14mm] print:[box-decoration-break:clone]">
+      <style>{"@page { size: A4; margin: 0; }"}</style>
       <PrintToolbar backHref={`/p/${token}`} />
-      <PortalHeader portal={portal}>
-        <div className="text-xs text-muted-foreground">{format(new Date(), "d MMMM yyyy")}</div>
-      </PortalHeader>
-
-      {portal.docs.length > 1 && (
-        <nav aria-label="Contents" className="grid gap-1 text-sm">
-          <h2 className="font-semibold">Contents</h2>
-          {/* Titles like "1. Overview" are already numbered. */}
-          <ol className={portal.docs.some((d) => /^\d/.test(d.title)) ? "text-muted-foreground" : "list-decimal pl-5 text-muted-foreground"}>
-            {hasOverview(portal) && <li>Overview</li>}
-            {portal.docs.map((d) => (
-              <li key={d.id}>{d.title}</li>
-            ))}
-          </ol>
-        </nav>
-      )}
-
-      {hasOverview(portal) && (
-        <div className="space-y-4 break-before-page">
-          <h2 className="text-lg font-semibold">Overview</h2>
-          <PortalOverview portal={portal} />
-        </div>
-      )}
+      <PrintCover portal={portal} />
+      {/* Progress and updates are a status report, not documentation: the PDF holds only the docs. */}
       {portal.docs.map((d) => (
         <div key={d.id} className="break-before-page">
           <PortalDoc doc={d} print />
