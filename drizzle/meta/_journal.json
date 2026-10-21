@@ -50,6 +50,13 @@
       "when": 1791588605686,
       "tag": "0006_ai_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792533655281,
+      "tag": "0007_attachments",
+      "breakpoints": true
     }
   ]
 }

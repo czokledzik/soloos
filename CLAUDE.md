@@ -19,4 +19,7 @@
 - Routes outside the login (`/api/mcp`, `/oauth/*`, `/.well-known/*`, `/api/cron/*`, `/api/ai/runner/*`, `/p/*`) check
   their own credentials; they're listed in `src/proxy.ts`.
 - Reads: `src/server/queries.ts` and `src/server/crm-queries.ts`. Shared constants used by server components must not live in `"use client"` files (put them in `src/lib/`).
+- Files: `file-actions.ts`/`file-queries.ts`; bytes live in Postgres (`attachment_data`, kept apart from the
+  metadata so lists never load them), max 4 MB per file (Vercel's request limit), served by `/files/[id]` behind
+  the login. Only PDFs/images (checked by their bytes, `src/lib/files.ts`) open inline; everything else downloads.
 - Drag-and-drop boards use the generic `Kanban` component (`src/components/app/kanban.tsx`).

@@ -12,6 +12,8 @@ describe("findSecret", () => {
     ["eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U", "a JWT / API token"],
     ["Hasło: Tajne123!", "a password or key"],
     ["api_key=abcdef123456", "a password or key"],
+    ["N8N_API_KEY=abcdef123456", "a password or key"],
+    ["DB_PASSWORD: hunter2hunter2", "a password or key"],
     ["-----BEGIN OPENSSH PRIVATE KEY-----", "a private key"],
   ])("flags %s", (text, what) => {
     expect(findSecret(text)).toBe(what);

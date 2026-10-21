@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -448,6 +449,35 @@ export const systems = pgTable(
 
 // ---------- AI ----------
 
+// Files attached to a client, optionally to one of its projects (proposals, contracts, specs).
+// The bytes live in `attachment_data` so listing files never loads them.
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: id(),
+    orgId: integer()
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    projectId: integer().references(() => projects.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    mimeType: text().notNull(),
+    sizeBytes: integer().notNull(),
+    sha256: text().notNull(),
+    note: text().notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.orgId), index().on(t.projectId)],
+);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+export const attachmentData = pgTable("attachment_data", {
+  attachmentId: integer()
+    .primaryKey()
+    .references(() => attachments.id, { onDelete: "cascade" }),
+  data: bytea().notNull(),
+});
+
 export const aiJobKind = pgEnum("ai_job_kind", ["thread_insights", "project_brief", "lead_reply"]);
 export const aiJobStatus = pgEnum("ai_job_status", ["queued", "running", "done", "failed"]);
 
@@ -487,6 +517,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   projects: many(projects),
   opportunities: many(opportunities),
   interactions: many(interactions),
+  attachments: many(attachments),
 }));
 
 export const contactsRelations = relations(contacts, ({ one }) => ({
@@ -503,6 +534,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   docPages: many(docPages),
   systems: many(systems),
   updates: many(projectUpdates),
+  attachments: many(attachments),
 }));
 
 export const projectUpdatesRelations = relations(projectUpdates, ({ one }) => ({
@@ -582,6 +614,11 @@ export const threadParticipantsRelations = relations(threadParticipants, ({ one,
   messages: many(messages),
 }));
 
+export const attachmentsRelations = relations(attachments, ({ one }) => ({
+  org: one(organizations, { fields: [attachments.orgId], references: [organizations.id] }),
+  project: one(projects, { fields: [attachments.projectId], references: [projects.id] }),
+}));
+
 export const messagesRelations = relations(messages, ({ one }) => ({
   thread: one(threads, { fields: [messages.threadId], references: [threads.id] }),
   participant: one(threadParticipants, { fields: [messages.participantId], references: [threadParticipants.id] }),
@@ -604,6 +641,7 @@ export type DocPage = typeof docPages.$inferSelect;
 export type DocRevision = typeof docRevisions.$inferSelect;
 export type ProjectSystem = typeof systems.$inferSelect;
 export type ProjectUpdate = typeof projectUpdates.$inferSelect;
+export type Attachment = typeof attachments.$inferSelect;
 export type AiJob = typeof aiJobs.$inferSelect;
 export type TaskStatus = (typeof taskStatus.enumValues)[number];
 export type OpportunityStage = (typeof opportunityStage.enumValues)[number];
