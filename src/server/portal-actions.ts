@@ -17,6 +17,19 @@ export async function enablePortal(projectId: number) {
   });
 }
 
+const SECTIONS = { progress: "portalProgress", hours: "portalHours", decisions: "portalDecisions" } as const;
+export type PortalSection = keyof typeof SECTIONS;
+
+/** Shows or hides an optional portal section (task progress, hours report, decision log). */
+export async function setPortalSection(projectId: number, section: PortalSection, on: boolean) {
+  return run(async () => {
+    const column = SECTIONS[section];
+    if (!column) throw new ActionError("Unknown portal section");
+    await db.update(projects).set({ [column]: on }).where(eq(projects.id, projectId));
+    refreshAll();
+  });
+}
+
 export async function disablePortal(projectId: number) {
   return run(async () => {
     await db.update(projects).set({ portalToken: null }).where(eq(projects.id, projectId));

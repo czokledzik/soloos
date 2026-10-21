@@ -15,12 +15,26 @@ import {
   enablePortal,
   saveProjectUpdate,
   setDocPagePublished,
+  setPortalSection,
   setUpdatePublished,
+  type PortalSection,
 } from "@/server/portal-actions";
 import { Markdown } from "./markdown";
 import { useAction } from "./use-action";
 
-export function PortalLink({ projectId, token, origin }: { projectId: number; token: string | null; origin: string }) {
+type Sections = Record<PortalSection, boolean>;
+
+export function PortalLink({
+  projectId,
+  token,
+  origin,
+  sections,
+}: {
+  projectId: number;
+  token: string | null;
+  origin: string;
+  sections: Sections;
+}) {
   const { pending, exec } = useAction();
   const url = token ? `${origin}/p/${token}` : null;
   return (
@@ -30,8 +44,8 @@ export function PortalLink({ projectId, token, origin }: { projectId: number; to
         <Badge variant={token ? "default" : "outline"}>{token ? "On" : "Off"}</Badge>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        A read-only page for the client: task progress, published updates and published doc pages (always the latest
-        version). Anyone with the link can open it; no rates, hours, notes or messages are shown.
+        A read-only page for the client, in Polish: published updates and doc pages (always the latest version), plus the
+        sections switched on below. Anyone with the link can open it; notes, messages and internal pages are never shown.
       </p>
       {token && url ? (
         <div className="mt-3 grid gap-2">
@@ -69,12 +83,49 @@ export function PortalLink({ projectId, token, origin }: { projectId: number; to
             </Button>
           </div>
         </div>
-      ) : (
+      ) : null}
+      <PortalSectionToggles projectId={projectId} sections={sections} />
+      {!token && (
         <Button className="mt-3" size="sm" disabled={pending} onClick={() => exec(() => enablePortal(projectId), "Portal on")}>
           Turn on
         </Button>
       )}
     </section>
+  );
+}
+
+const SECTION_LABELS: { key: PortalSection; label: string; hint: string }[] = [
+  { key: "progress", label: "Task progress", hint: "done / total tasks, so only if the task list is meant for the client" },
+  { key: "hours", label: "Hours report", hint: "billable entries with notes, value at the logged rates, payments and what's due" },
+  { key: "decisions", label: "Decision log", hint: "date, title, details and who decided; not the sources" },
+];
+
+/** Optional portal sections; each checkbox saves at once and rolls back if saving fails. */
+function PortalSectionToggles({ projectId, sections }: { projectId: number; sections: Sections }) {
+  const { exec } = useAction();
+  const [state, setState] = useState(sections);
+  return (
+    <fieldset className="mt-3 grid gap-1.5 text-sm">
+      <legend className="mb-1 font-medium">Also show</legend>
+      {SECTION_LABELS.map(({ key, label, hint }) => (
+        <label key={key} className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={state[key]}
+            onChange={async (e) => {
+              const next = e.target.checked;
+              setState((s) => ({ ...s, [key]: next }));
+              const res = await exec(() => setPortalSection(projectId, key, next));
+              if (!res.ok) setState((s) => ({ ...s, [key]: !next }));
+            }}
+          />
+          <span>
+            {label} <span className="text-muted-foreground">· {hint}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
   );
 }
 
