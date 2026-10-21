@@ -56,8 +56,9 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
   await expect(client).toHaveURL(/\/print$/);
   await expect(client).toHaveTitle("Portal demo — Portal Client");
   await expect(client.locator("html")).toHaveClass(/\blight\b/);
-  await expect(client.getByRole("heading", { name: "Week 1" })).toBeVisible();
   await expect(client.getByRole("heading", { name: "Architecture" })).toBeVisible();
+  // The PDF is the documentation only: no progress or updates.
+  await expect(client.getByRole("heading", { name: "Week 1" })).toHaveCount(0);
   await expect(client.locator("svg[id^=mmd-] >> text=Portal")).toBeVisible();
   await expect(client.getByRole("button", { name: "Save as PDF" })).toBeVisible();
   const printHtml = await client.content();
