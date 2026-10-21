@@ -52,6 +52,8 @@ export function Markdown({
         "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:text-[0.85em] [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
         "[&_table]:my-3 [&_table]:w-full [&_table]:text-left [&_td]:border-t [&_td]:px-2 [&_td]:py-1 [&_th]:px-2 [&_th]:py-1 [&_th]:font-medium [&_hr]:my-4",
         "[&_input[type=checkbox]]:mr-1.5 [&>*:first-child]:mt-0",
+        // Print/PDF: keep headings (and a line introducing a list or table) with what follows; don't split rows or list items.
+        "[&_h1]:break-after-avoid [&_h2]:break-after-avoid [&_h3]:break-after-avoid [&_p:has(+ul,+ol,+table)]:break-after-avoid [&_li]:break-inside-avoid [&_tr]:break-inside-avoid",
         className,
       )}
     >

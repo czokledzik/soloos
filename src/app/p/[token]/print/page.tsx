@@ -23,7 +23,9 @@ export default async function PortalPrintPage({ params }: PageProps<"/p/[token]/
   if (!portal) notFound();
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-8 px-6 py-8 [print-color-adjust:exact] print:max-w-none print:p-0">
+    // Plain block layout: browsers split grid/flex containers across pages less reliably.
+    <div className="mx-auto max-w-4xl space-y-8 px-6 py-8 [print-color-adjust:exact] print:max-w-none print:p-0">
+      <style>{"@page { size: A4; margin: 14mm; }"}</style>
       <PrintToolbar backHref={`/p/${token}`} />
       <PortalHeader portal={portal}>
         <div className="text-xs text-muted-foreground">{format(new Date(), "d MMMM yyyy")}</div>
@@ -43,7 +45,7 @@ export default async function PortalPrintPage({ params }: PageProps<"/p/[token]/
       )}
 
       {hasOverview(portal) && (
-        <div className="grid gap-4 break-before-page">
+        <div className="space-y-4 break-before-page">
           <h2 className="text-lg font-semibold">Overview</h2>
           <PortalOverview portal={portal} />
         </div>
