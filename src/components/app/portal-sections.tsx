@@ -66,10 +66,13 @@ export function PortalOverview({ portal }: { portal: Portal }) {
 
 export function PortalDoc({ doc, print = false }: { doc: Portal["docs"][number]; print?: boolean }) {
   return (
-    <section className="grid gap-2">
-      <h2 className="text-lg font-semibold">{doc.title}</h2>
+    <section className="space-y-2">
+      {/* The date sits under the title: as a footer it could end up alone on an otherwise empty PDF page. */}
+      <header className="break-after-avoid">
+        <h2 className="text-lg font-semibold">{doc.title}</h2>
+        <p className="text-xs text-muted-foreground">Updated {format(doc.updatedAt, "d MMM yyyy")}</p>
+      </header>
       <Markdown staticDiagrams={print}>{doc.bodyMd}</Markdown>
-      <p className="text-xs text-muted-foreground">Updated {format(doc.updatedAt, "d MMM yyyy")}</p>
     </section>
   );
 }
