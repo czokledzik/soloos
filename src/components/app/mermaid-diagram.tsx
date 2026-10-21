@@ -5,8 +5,11 @@ import { useTheme } from "next-themes";
 import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/** Renders Mermaid source to SVG (Mermaid is loaded on demand) inside a pan/zoom view. */
-export function MermaidDiagram({ code }: { code: string }) {
+/**
+ * Renders Mermaid source to SVG (Mermaid is loaded on demand) inside a pan/zoom view, or
+ * fitted to the page width when `interactive` is false (print/PDF).
+ */
+export function MermaidDiagram({ code, interactive = true }: { code: string; interactive?: boolean }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { resolvedTheme } = useTheme();
   const [svg, setSvg] = useState<string | null>(null);
@@ -44,7 +47,18 @@ export function MermaidDiagram({ code }: { code: string }) {
       </div>
     );
   }
-  if (!svg) return <div className="h-32 animate-pulse rounded-lg bg-muted" />;
+  // data-diagram-loading lets the print view wait until every diagram is drawn.
+  if (!svg) return <div data-diagram-loading className="h-32 animate-pulse rounded-lg bg-muted" />;
+  if (!interactive) {
+    return (
+      <div
+        // Capped at one A4 page so the browser doesn't cut a tall diagram mid-node; it stays vector in the PDF.
+        className="my-3 flex break-inside-avoid justify-center [&_svg]:h-auto [&_svg]:max-h-[24cm] [&_svg]:max-w-full"
+        // Mermaid output rendered with securityLevel "strict" (no scripts, sanitized labels).
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    );
+  }
   return <PanZoom svg={svg} />;
 }
 
