@@ -54,7 +54,7 @@ export function MermaidDiagram({ code, interactive = true }: { code: string; int
       <div
         // Kept whole and capped below a full A4 page (14 mm margins leave ~27 cm) so a heading or a few lines
         // still fit beside it instead of leaving a near-empty page. It stays vector in the PDF.
-        className="my-3 break-inside-avoid [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-h-[20cm] [&_svg]:max-w-full"
+        className="my-3 break-inside-avoid [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-h-[18cm] [&_svg]:max-w-full"
         // Mermaid output rendered with securityLevel "strict" (no scripts, sanitized labels).
         dangerouslySetInnerHTML={{ __html: svg }}
       />

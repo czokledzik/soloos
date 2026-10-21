@@ -128,3 +128,11 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  /* The toast region and Next's route announcer sit after the content and push an empty last page. */
+  body > section[aria-label^="Notifications"],
+  next-route-announcer {
+    display: none !important;
+  }
+}
