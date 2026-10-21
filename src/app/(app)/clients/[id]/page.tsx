@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ExternalLinkIcon } from "lucide-react";
 import { OpenDialogButton } from "@/components/app/buttons";
 import { ContactsCard, EditOrgButton } from "@/components/app/client-panels";
+import { FilesPanel } from "@/components/app/files-panel";
 import { NotesEditor } from "@/components/app/notes-editor";
 import { PageHeader } from "@/components/app/page-header";
 import { Timeline, type TimelineEvent } from "@/components/app/timeline";
@@ -12,6 +13,7 @@ import { OPPORTUNITY_STAGES, ORG_STATUSES, PROJECT_STATUSES, STAGE_DOT, labelOf 
 import { cn } from "@/lib/utils";
 import { updateOrganizationNotes } from "@/server/crm-actions";
 import { getCrmPickers, listInteractions, listOrgOpportunities } from "@/server/crm-queries";
+import { listAttachments } from "@/server/file-queries";
 import { listThreads } from "@/server/message-queries";
 import { getOrganization, getPickerData, listProjects } from "@/server/queries";
 import { buttonVariants } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import { buttonVariants } from "@/components/ui/button";
 export default async function ClientPage({ params }: PageProps<"/clients/[id]">) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const [org, allProjects, opps, interactions, threads, crm, pickers] = await Promise.all([
+  const [org, allProjects, opps, interactions, threads, crm, pickers, files] = await Promise.all([
     getOrganization(id),
     listProjects(),
     listOrgOpportunities(id),
@@ -27,6 +29,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
     listThreads({ orgId: id }),
     getCrmPickers(),
     getPickerData(),
+    listAttachments({ orgId: id }),
   ]);
   if (!org) notFound();
   const projects = allProjects.filter((p) => p.org.id === id);
@@ -137,6 +140,11 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                 ))}
               </div>
             )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium">Files</h2>
+            <FilesPanel orgId={id} files={files} compact />
           </section>
 
           <section>

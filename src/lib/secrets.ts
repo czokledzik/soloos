@@ -15,7 +15,7 @@ const PATTERNS: [RegExp, string][] = [
   [/\bAIza[0-9A-Za-z_-]{35}\b/, "a Google API key"],
   [/\bSK[0-9a-f]{32}\b/, "a Twilio API key"],
   [/\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, "a JWT / API token"],
-  [/\b(?:password|passwd|pwd|hasło|haslo|secret|api[_ -]?key|auth[_ -]?token|access[_ -]?token|token)\s*[:=]\s*\S{6,}/i, "a password or key"],
+  [/(?:\b|_)(?:password|passwd|pwd|hasło|haslo|secret|api[_ -]?key|auth[_ -]?token|access[_ -]?token|token)\s*[:=]\s*\S{6,}/i, "a password or key"],
 ];
 
 export function findSecret(text: string | null | undefined): string | null {
