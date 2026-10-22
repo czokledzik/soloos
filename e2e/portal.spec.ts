@@ -84,6 +84,11 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
   // The hours report shows the work, its value and the rate once switched on.
   await page.getByLabel(/Hours report/).check();
   await expect(page.getByLabel(/Hours report/)).toBeChecked();
+  // The report with amounts is never what the client lands on: it comes last in the menu.
+  await client.goto(link);
+  const menu = client.getByRole("navigation", { name: "Sekcje" }).getByRole("link");
+  await expect(menu.first()).toHaveAttribute("aria-current", "page");
+  await expect(menu.last()).toHaveText("Raport godzin");
   await client.goto(`${link}?tab=hours`);
   await expect(client.getByText("Formularz rezerwacji")).toBeVisible();
   await expect(client.getByText("1 h 30 min").first()).toBeVisible();

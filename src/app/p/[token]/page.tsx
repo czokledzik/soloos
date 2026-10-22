@@ -36,13 +36,15 @@ export default async function PortalPage({ params, searchParams }: PageProps<"/p
   const portal = await getPortal(token);
   if (!portal) notFound();
 
+  // Order of the menu, and the first one is what the client lands on: the project and its docs
+  // first, the hours report (with amounts) last, under its own heading.
   const sections = [
     ...(hasOverview(portal) ? [{ key: "overview", title: "Przegląd" }] : []),
-    ...(portal.hours ? [{ key: "hours", title: "Raport godzin" }] : []),
     ...(portal.decisions ? [{ key: "decisions", title: "Decyzje" }] : []),
   ];
   const docTabs = portal.docs.map((d) => ({ key: String(d.id), title: d.title }));
-  const tabs = [...sections, ...docTabs];
+  const billing = portal.hours ? [{ key: "hours", title: "Raport godzin" }] : [];
+  const tabs = [...sections, ...docTabs, ...billing];
   const tabParam = (await searchParams).tab;
   const current = tabs.find((t) => t.key === tabParam) ?? tabs[0];
   const doc = portal.docs.find((d) => String(d.id) === current?.key);
@@ -81,12 +83,10 @@ export default async function PortalPage({ params, searchParams }: PageProps<"/p
           // A column of links on wide screens (doc titles are long), a scrolling strip on phones.
           <nav aria-label="Sekcje" className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:sticky md:top-6 md:mx-0 md:flex-col md:self-start md:overflow-visible">
             {sections.map(tabLink)}
-            {docTabs.length > 0 && sections.length > 0 && (
-              <div className="hidden px-3 pt-4 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase md:block">
-                Dokumentacja
-              </div>
-            )}
+            {docTabs.length > 0 && sections.length > 0 && <GroupHeading>Dokumentacja</GroupHeading>}
             {docTabs.map(tabLink)}
+            {billing.length > 0 && tabs.length > billing.length && <GroupHeading>Rozliczenie</GroupHeading>}
+            {billing.map(tabLink)}
           </nav>
         )}
 
@@ -99,5 +99,12 @@ export default async function PortalPage({ params, searchParams }: PageProps<"/p
         </main>
       </div>
     </div>
+  );
+}
+
+/** Label above a group of links in the side menu (hidden in the phone strip). */
+function GroupHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="hidden px-3 pt-4 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase md:block">{children}</div>
   );
 }
