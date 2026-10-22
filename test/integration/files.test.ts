@@ -9,7 +9,7 @@ import { form, makeOrg, makeProject, ok, resetDb } from "../db";
 
 beforeEach(resetDb);
 
-const pdf = (body = "offer") => new File([`%PDF-1.7\n${body}`], "Oferta – Acme Dental.pdf", { type: "application/pdf" });
+const pdf = (body = "offer") => new File([`%PDF-1.7\n${body}`], "Offer – Acme Dental.pdf", { type: "application/pdf" });
 
 function upload(target: Record<string, number>, ...files: File[]) {
   const fd = form({ ...target, note: "signed" });
@@ -30,7 +30,7 @@ describe("attachments", () => {
     const files = await listAttachments({ projectId: project.id });
     expect(files.map((f) => [f.name, f.mimeType, f.orgId, f.note])).toEqual([
       ["notes.txt", "text/plain", project.orgId, "signed"],
-      ["Oferta – Acme Dental.pdf", "application/pdf", project.orgId, "signed"],
+      ["Offer – Acme Dental.pdf", "application/pdf", project.orgId, "signed"],
     ]);
     // The client sees its projects' files too.
     expect(await listAttachments({ orgId: project.orgId })).toHaveLength(2);
@@ -39,7 +39,7 @@ describe("attachments", () => {
     const res = await download(pdfRow.id);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/pdf");
-    expect(res.headers.get("content-disposition")).toMatch(/^inline; .*filename\*=UTF-8''Oferta%20%E2%80%93/);
+    expect(res.headers.get("content-disposition")).toMatch(/^inline; .*filename\*=UTF-8''Offer%20%E2%80%93/);
     expect(await res.text()).toBe("%PDF-1.7\noffer");
 
     expect((await download(pdfRow.id, "?download")).headers.get("content-disposition")).toMatch(/^attachment;/);
@@ -59,7 +59,7 @@ describe("attachments", () => {
     ok(await upload({ projectId: project.id }, pdf()));
 
     const dup = await upload({ projectId: project.id }, new File(["x"], "a.txt"), pdf());
-    expect(dup).toEqual({ ok: false, error: "Oferta – Acme Dental.pdf is already attached as Oferta – Acme Dental.pdf." });
+    expect(dup).toEqual({ ok: false, error: "Offer – Acme Dental.pdf is already attached as Offer – Acme Dental.pdf." });
 
     const big = await upload({ projectId: project.id }, new File([new Uint8Array(MAX_FILE_BYTES + 1)], "video.mp4"));
     expect(big).toMatchObject({ ok: false, error: expect.stringContaining("files can be up to 4.0 MB") });
