@@ -13,6 +13,7 @@ import {
   portalTitle,
 } from "@/components/app/portal-sections";
 import { buttonVariants } from "@/components/ui/button";
+import { portalText } from "@/lib/portal-text";
 import { cn } from "@/lib/utils";
 import { getPortal } from "@/server/portal-queries";
 
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps<"/p/[token]">): Promise<Metadata> {
   const portal = await getPortal((await params).token);
   return {
-    title: { absolute: portal ? portalTitle(portal) : "Status projektu" },
+    title: { absolute: portal ? portalTitle(portal) : portalText("en").fallbackTitle },
     robots: { index: false, follow: false },
   };
 }
@@ -29,21 +30,22 @@ export async function generateMetadata({ params }: PageProps<"/p/[token]">): Pro
 /**
  * Read-only client portal: overview (progress, updates), hours report, decision log and the
  * published docs, one section at a time (?tab=…), plus a print/PDF view of the docs. No login,
- * the link is the key. Polish, like the clients.
+ * the link is the key. In the project's portal language.
  */
 export default async function PortalPage({ params, searchParams }: PageProps<"/p/[token]">) {
   const { token } = await params;
   const portal = await getPortal(token);
   if (!portal) notFound();
+  const t = portalText(portal.lang);
 
   // Order of the menu, and the first one is what the client lands on: the project and its docs
   // first, the hours report (with amounts) last, under its own heading.
   const sections = [
-    ...(hasOverview(portal) ? [{ key: "overview", title: "Przegląd" }] : []),
-    ...(portal.decisions ? [{ key: "decisions", title: "Decyzje" }] : []),
+    ...(hasOverview(portal) ? [{ key: "overview", title: t.overview }] : []),
+    ...(portal.decisions ? [{ key: "decisions", title: t.decisions }] : []),
   ];
   const docTabs = portal.docs.map((d) => ({ key: String(d.id), title: d.title }));
-  const billing = portal.hours ? [{ key: "hours", title: "Raport godzin" }] : [];
+  const billing = portal.hours ? [{ key: "hours", title: t.hoursReport }] : [];
   const tabs = [...sections, ...docTabs, ...billing];
   const tabParam = (await searchParams).tab;
   const current = tabs.find((t) => t.key === tabParam) ?? tabs[0];
@@ -71,31 +73,31 @@ export default async function PortalPage({ params, searchParams }: PageProps<"/p
           {portal.docs.length > 0 && (
             <Link href={`/p/${token}/print`} className={buttonVariants({ variant: "outline", size: "sm" })}>
               <DownloadIcon />
-              Pobierz PDF
+              {t.downloadPdf}
             </Link>
           )}
-          <PortalThemeToggle />
+          <PortalThemeToggle labels={{ toDark: t.darkOn, toLight: t.darkOff, dark: t.dark, light: t.light }} />
         </div>
       </PortalHeader>
 
       <div className={cn("grid gap-6", tabs.length > 1 && "md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10")}>
         {tabs.length > 1 && (
           // A column of links on wide screens (doc titles are long), a scrolling strip on phones.
-          <nav aria-label="Sekcje" className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:sticky md:top-6 md:mx-0 md:flex-col md:self-start md:overflow-visible">
+          <nav aria-label={t.sections} className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:sticky md:top-6 md:mx-0 md:flex-col md:self-start md:overflow-visible">
             {sections.map(tabLink)}
-            {docTabs.length > 0 && sections.length > 0 && <GroupHeading>Dokumentacja</GroupHeading>}
+            {docTabs.length > 0 && sections.length > 0 && <GroupHeading>{t.documentation}</GroupHeading>}
             {docTabs.map(tabLink)}
-            {billing.length > 0 && tabs.length > billing.length && <GroupHeading>Rozliczenie</GroupHeading>}
+            {billing.length > 0 && tabs.length > billing.length && <GroupHeading>{t.billing}</GroupHeading>}
             {billing.map(tabLink)}
           </nav>
         )}
 
         <main className="min-w-0">
-          {!current && <p className="text-sm text-muted-foreground">Nic jeszcze nie udostępniono.</p>}
+          {!current && <p className="text-sm text-muted-foreground">{t.nothingShared}</p>}
           {current?.key === "overview" && <PortalOverview portal={portal} />}
-          {current?.key === "hours" && portal.hours && <PortalHours hours={portal.hours} />}
-          {current?.key === "decisions" && portal.decisions && <PortalDecisions decisions={portal.decisions} />}
-          {doc && <PortalDoc doc={doc} />}
+          {current?.key === "hours" && portal.hours && <PortalHours hours={portal.hours} t={t} />}
+          {current?.key === "decisions" && portal.decisions && <PortalDecisions decisions={portal.decisions} t={t} />}
+          {doc && <PortalDoc doc={doc} t={t} />}
         </main>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, docPages, projectUpdates, projects } from "@/db";
+import { PORTAL_LANGS, type PortalLang } from "@/lib/portal-text";
 import { findSecret } from "@/lib/secrets";
 import { ActionError, run } from "./form";
 import { refreshAll } from "./refresh";
@@ -26,6 +27,15 @@ export async function setPortalSection(projectId: number, section: PortalSection
     const column = SECTIONS[section];
     if (!column) throw new ActionError("Unknown portal section");
     await db.update(projects).set({ [column]: on }).where(eq(projects.id, projectId));
+    refreshAll();
+  });
+}
+
+/** Language the client sees the portal (and its PDF) in. */
+export async function setPortalLang(projectId: number, lang: PortalLang) {
+  return run(async () => {
+    if (!PORTAL_LANGS.some((l) => l.value === lang)) throw new ActionError("Unknown language");
+    await db.update(projects).set({ portalLang: lang }).where(eq(projects.id, projectId));
     refreshAll();
   });
 }

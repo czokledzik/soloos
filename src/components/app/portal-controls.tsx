@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 const noop = () => () => {};
 
 /** Light/dark switch for the client portal (stored separately from the app's theme). */
-export function PortalThemeToggle() {
+export function PortalThemeToggle({ labels }: { labels: { toDark: string; toLight: string; dark: string; light: string } }) {
   const { resolvedTheme, setTheme } = useTheme();
   // The stored theme is only known in the browser; render the server's guess until hydrated.
   const mounted = useSyncExternalStore(noop, () => true, () => false);
@@ -17,8 +17,8 @@ export function PortalThemeToggle() {
     <Button
       variant="outline"
       size="icon-sm"
-      aria-label={dark ? "Przełącz na jasny motyw" : "Przełącz na ciemny motyw"}
-      title={dark ? "Jasny motyw" : "Ciemny motyw"}
+      aria-label={dark ? labels.toLight : labels.toDark}
+      title={dark ? labels.light : labels.dark}
       onClick={() => setTheme(dark ? "light" : "dark")}
     >
       {dark ? <SunIcon /> : <MoonIcon />}
@@ -30,7 +30,7 @@ export function PortalThemeToggle() {
  * Print view toolbar: opens the browser's print dialog ("Save as PDF") once every Mermaid
  * diagram has rendered, and offers a button to do it again. Hidden in the printout.
  */
-export function PrintToolbar({ backHref }: { backHref: string }) {
+export function PrintToolbar({ backHref, labels }: { backHref: string; labels: { hint: string; back: string; save: string } }) {
   useEffect(() => {
     // Browser tests run with navigator.webdriver set; a print dialog there would just get in the way.
     if (navigator.webdriver) return;
@@ -52,14 +52,14 @@ export function PrintToolbar({ backHref }: { backHref: string }) {
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 p-3 text-sm print:hidden">
-      <span className="text-muted-foreground">W oknie drukowania wybierz „Zapisz jako PDF”.</span>
+      <span className="text-muted-foreground">{labels.hint}</span>
       <div className="flex gap-2">
         <a href={backHref} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-          Wróć
+          {labels.back}
         </a>
         <Button size="sm" onClick={() => window.print()}>
           <PrinterIcon />
-          Zapisz jako PDF
+          {labels.save}
         </Button>
       </div>
     </div>

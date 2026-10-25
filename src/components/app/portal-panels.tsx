@@ -9,17 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProjectUpdate } from "@/db/schema";
+import { PORTAL_LANGS, type PortalLang } from "@/lib/portal-text";
 import {
   deleteProjectUpdate,
   disablePortal,
   enablePortal,
   saveProjectUpdate,
   setDocPagePublished,
+  setPortalLang,
   setPortalSection,
   setUpdatePublished,
   type PortalSection,
 } from "@/server/portal-actions";
 import { Markdown } from "./markdown";
+import { NativeSelect } from "./native-select";
 import { useAction } from "./use-action";
 
 type Sections = Record<PortalSection, boolean>;
@@ -29,11 +32,13 @@ export function PortalLink({
   token,
   origin,
   sections,
+  lang,
 }: {
   projectId: number;
   token: string | null;
   origin: string;
   sections: Sections;
+  lang: PortalLang;
 }) {
   const { pending, exec } = useAction();
   const url = token ? `${origin}/p/${token}` : null;
@@ -44,7 +49,7 @@ export function PortalLink({
         <Badge variant={token ? "default" : "outline"}>{token ? "On" : "Off"}</Badge>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        A read-only page for the client, in Polish: published updates and doc pages (always the latest version), plus the
+        A read-only page for the client: published updates and doc pages (always the latest version), plus the
         sections switched on below. Anyone with the link can open it; notes, messages and internal pages are never shown.
       </p>
       {token && url ? (
@@ -84,6 +89,21 @@ export function PortalLink({
           </div>
         </div>
       ) : null}
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <span className="font-medium">Client language</span>
+        <NativeSelect
+          className="w-36"
+          defaultValue={lang}
+          disabled={pending}
+          onChange={(e) => exec(() => setPortalLang(projectId, e.target.value as PortalLang), "Portal language saved")}
+        >
+          {PORTAL_LANGS.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </NativeSelect>
+      </label>
       <PortalSectionToggles projectId={projectId} sections={sections} />
       {!token && (
         <Button className="mt-3" size="sm" disabled={pending} onClick={() => exec(() => enablePortal(projectId), "Portal on")}>

@@ -27,6 +27,9 @@ test("publish an update and a diagram, the client sees only those", async ({ pag
   await expect(page.getByText("Draft", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Publish" }).click();
   await expect(page.getByText(/^Published /)).toBeVisible();
+  // Polish for this client (new projects default to English).
+  await page.getByLabel("Client language").selectOption("pl");
+  await expect(page.getByText("Portal language saved")).toBeVisible();
   await page.getByLabel("Architecture").check();
   // Optional sections: progress and decisions now, the hours report later.
   await page.getByLabel(/Task progress/).check();
