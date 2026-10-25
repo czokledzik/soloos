@@ -36,7 +36,7 @@ Each project has a drag-and-drop board (or a list), with tracked vs. estimated t
 ### Money: fixed price, hourly, payments, reports
 
 Fixed-price and hourly projects, payment schedules, budget used and the effective hourly rate you actually earned.
-Reports by client/project/period with CSV export and a work summary ready to paste into Useme/Bizky or an invoice.
+Reports by client/project/period with CSV export and a work summary ready to paste into an invoice or a client update.
 
 <table>
   <tr>
