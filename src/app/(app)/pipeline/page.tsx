@@ -3,7 +3,7 @@ import { OpenDialogButton } from "@/components/app/buttons";
 import { OpportunitySheet } from "@/components/app/opportunity-sheet";
 import { PageHeader } from "@/components/app/page-header";
 import { PipelineBoard } from "@/components/app/pipeline-board";
-import { formatMoney } from "@/lib/format";
+import { formatMoneyTotals } from "@/lib/format";
 import { getCrmPickers, getOpportunity, listInteractions, listPipeline } from "@/server/crm-queries";
 import { listThreads } from "@/server/message-queries";
 import { LeadAiPanel } from "@/components/app/ai-panel";
@@ -30,7 +30,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
   ]);
 
   const open = rows.filter((r) => r.stage !== "won" && r.stage !== "lost");
-  const openValue = open.reduce((s, r) => s + (r.estValue ?? 0), 0);
+  const openValue = formatMoneyTotals(open.map((r) => ({ amount: r.estValue, currency: r.currency })));
   const monthStart = startOfMonth(new Date());
   const wonThisMonth = rows.filter((r) => r.stage === "won" && r.updatedAt >= monthStart).length;
 
@@ -38,7 +38,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
     <div>
       <PageHeader
         title="Pipeline"
-        subtitle={`${open.length} open · ${formatMoney(openValue)} estimated · ${wonThisMonth} won this month`}
+        subtitle={`${open.length} open · ${openValue} estimated · ${wonThisMonth} won this month`}
         actions={
           <>
             <OpenDialogButton kind="interaction" variant="outline">

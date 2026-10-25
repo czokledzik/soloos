@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatElapsed, formatMinutes, formatMoney, moneyInput, parseCurrency, parseDuration, parseMoney } from "./format";
+import { formatElapsed, formatMinutes, formatMoney, formatMoneyTotals, moneyInput, parseCurrency, parseDuration, parseMoney } from "./format";
 
 describe("parseDuration", () => {
   it.each([
@@ -67,6 +67,21 @@ describe("formatting", () => {
 });
 
 describe("currencies", () => {
+  it("formats other currencies in English style", () => {
+    expect(formatMoney(1234550, "USD")).toBe("$12,345.50");
+    expect(formatMoney(150_00, "EUR")).toBe("€150.00");
+  });
+
+  it("adds up amounts per currency", () => {
+    const items = [
+      { amount: 100_00, currency: "USD" },
+      { amount: 50_00, currency: "USD" },
+      { amount: null, currency: "EUR" },
+    ];
+    expect(formatMoneyTotals(items)).toBe("$150.00");
+    expect(formatMoneyTotals([])).toBe("—");
+  });
+
   it("formats unknown currency codes without crashing", () => {
     expect(formatMoney(150_00, "ZL").replace(/\s/g, " ")).toBe("150,00 ZL");
   });
