@@ -95,7 +95,8 @@ async function gif(browser: Browser, name: string, script: (page: Page) => Promi
 
 async function main() {
   mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch();
+  // Without this, headless Chromium on Linux hints fonts so hard that letter spacing looks off.
+  const browser = await chromium.launch({ args: ["--font-render-hinting=none"] });
   await screenshots(browser);
 
   await gif(browser, "command-palette", async (page) => {
@@ -147,9 +148,9 @@ async function main() {
       await box.click();
       await box.fill(
         [
-          "21.10.2026, 09:12 - Ola Nowicka: Hej! Czy możemy dodać faktury korygujące przy zwrotach?",
-          "21.10.2026, 09:14 - Me: Tak, to ok. 4h. Wycenę wyślę dziś.",
-          "21.10.2026, 09:20 - Ola Nowicka: Super, dzięki 🙌",
+          "10/21/26, 9:12 AM - Olivia Hart: Hi! Could we also handle credit notes for refunds?",
+          "10/21/26, 9:14 AM - Me: Sure, that's about 4h. I'll send a quote today.",
+          "10/21/26, 9:20 AM - Olivia Hart: Great, thanks 🙌",
         ].join("\n"),
       );
       await page.waitForTimeout(900);
@@ -169,7 +170,7 @@ async function main() {
     "portal",
     async (page) => {
       await page.waitForTimeout(800);
-      for (const link of ["Decyzje", "2. Booking flow", "Raport godzin"]) {
+      for (const link of ["Decisions", "2. Booking flow", "Hours report"]) {
         await page.getByRole("link", { name: link }).first().click();
         await page.waitForTimeout(1800);
       }

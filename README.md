@@ -103,7 +103,7 @@ SoloOS is also an MCP server, so Claude (claude.ai, Desktop, mobile, Claude Code
 
 ### Client portal
 
-A read-only link per project for the client (in Polish): progress, published updates, selected doc pages, the decision
+A read-only link per project for the client, in English or Polish: progress, published updates, selected doc pages, the decision
 log and an optional hours report, plus a PDF export. It never shows rates, notes or messages.
 
 ![Client portal: decisions, a doc page with a diagram, the hours report](docs/media/portal.gif)
@@ -194,7 +194,7 @@ project timelines show them interleaved with logged conversations.
   and Messenger copies and "Name: text" logs are split automatically; fix anything on screen before saving.
   Logged conversations have a ✂ button to convert them the same way.
 - **Telegram:** Settings → Telegram chats, upload `result.json` from Telegram Desktop's JSON export.
-- **Email (IMAP):** set `IMAP_HOST` (Hostinger: `imap.hostinger.com`), `IMAP_USER`, `IMAP_PASSWORD`, optionally
+- **Email (IMAP):** set `IMAP_HOST` (e.g. `imap.example.com`), `IMAP_USER`, `IMAP_PASSWORD`, optionally
   `IMAP_MAILBOXES` (default `INBOX,INBOX.Sent`), `EMAIL_ME_ADDRESSES` (other addresses that are you) and
   `IMAP_SINCE_DAYS` (first sync window, default 30). Only mail to/from a contact's email address is kept, replies are
   threaded by Message-ID and nothing is imported twice. Run it from Settings → Email → Sync now, or on a schedule:
@@ -217,9 +217,11 @@ create or copy each item yourself. Two ways to run it (`AI_PROVIDER`):
 
 ## Client portal
 
-Project → Portal → Turn on gives a read-only link (`/p/<token>`) for the client: task progress, updates you publish,
-and doc pages you tick (always their latest version, diagrams zoomable). It never shows rates, hours, notes or
-messages. "New link" replaces a leaked link; "Turn off" disables it.
+Project → Portal → Turn on gives a read-only link (`/p/<token>`) for the client: updates you publish and doc pages you
+tick (always their latest version, diagrams zoomable), plus optional task progress, decision log and hours report
+(hours, value and payments). "Download PDF" exports the docs. It never shows notes, messages or internal pages.
+"Client language" switches the portal between English and Polish. "New link" replaces a leaked link; "Turn off"
+disables it.
 
 ## Claude (MCP)
 
