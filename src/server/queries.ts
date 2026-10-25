@@ -161,6 +161,7 @@ export async function getPickerData() {
         orgId: projects.orgId,
         orgName: organizations.name,
         status: projects.status,
+        currency: projects.currency,
       })
       .from(projects)
       .innerJoin(organizations, eq(projects.orgId, organizations.id))

@@ -50,6 +50,7 @@ export async function listPipeline() {
     .select({
       opp: opportunities,
       orgName: organizations.name,
+      currency: organizations.currency,
       contactName: contacts.name,
       lastContactAt: last.at,
     })
@@ -67,6 +68,7 @@ export async function listPipeline() {
   return rows.map((r) => ({
     ...r.opp,
     orgName: r.orgName,
+    currency: r.currency,
     contactName: r.contactName,
     lastContactAt: r.lastContactAt ? new Date(r.lastContactAt) : null,
   }));

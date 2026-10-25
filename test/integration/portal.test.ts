@@ -6,6 +6,7 @@ import {
   enablePortal,
   saveProjectUpdate,
   setDocPagePublished,
+  setPortalLang,
   setPortalSection,
   setUpdatePublished,
 } from "@/server/portal-actions";
@@ -109,6 +110,15 @@ describe("client portal", () => {
     const log = (await getPortal(token))!.decisions!;
     expect(log.map((d) => d.title)).toEqual(["Bot nie mówi o cenach", "Rozmowy w Baserow"]);
     expect(JSON.stringify(log)).not.toContain("telegram");
+  });
+
+  it("is in English unless switched to Polish", async () => {
+    const p = await makeProject();
+    const token = ok(await enablePortal(p.id))!;
+    expect((await getPortal(token))!.lang).toBe("en");
+    ok(await setPortalLang(p.id, "pl"));
+    expect((await getPortal(token))!.lang).toBe("pl");
+    expect((await setPortalLang(p.id, "de" as "en")).ok).toBe(false);
   });
 
   it("turning off or replacing the link locks out the old one", async () => {

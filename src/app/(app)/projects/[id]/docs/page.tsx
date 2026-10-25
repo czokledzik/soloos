@@ -21,6 +21,7 @@ export default async function ProjectDocsPage({ params, searchParams }: PageProp
           templates={DOC_TEMPLATES.map((t) => ({
             id: t.id,
             name: t.name,
+            short: t.short,
             description: t.description,
             pages: t.pages.length,
             questions: t.questions.length,

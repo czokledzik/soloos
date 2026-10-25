@@ -6,6 +6,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { CheckIcon, CopyIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/format";
 import type { AiResult } from "@/server/ai/tasks";
 import { askClaude } from "@/server/ai-actions";
 import { createTask } from "@/server/actions";
@@ -138,7 +139,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function ThreadInsights({ result, projectId }: { result: unknown; projectId: number | null }) {
+export function ThreadInsights({ result, projectId, currency }: { result: unknown; projectId: number | null; currency: string }) {
   const r = result as AiResult<"thread_insights">;
   const noProject = projectId ? undefined : "Link this thread to a project first";
   return (
@@ -202,7 +203,7 @@ export function ThreadInsights({ result, projectId }: { result: unknown; project
               >
                 <div className="font-medium">{c.title}</div>
                 <div className="text-xs text-muted-foreground">
-                  {[c.requestedBy, c.hoursImpact, c.priceImpact != null && `${c.priceImpact > 0 ? "+" : ""}${c.priceImpact}`]
+                  {[c.requestedBy, c.hoursImpact, c.priceImpact != null && `${c.priceImpact > 0 ? "+" : ""}${formatMoney(Math.round(c.priceImpact * 100), currency)}`]
                     .filter(Boolean)
                     .join(" · ")}
                 </div>
@@ -292,10 +293,22 @@ export function LeadReply({ result }: { result: unknown }) {
 
 // Wrappers usable from server components (which can't pass render functions).
 
-export function ThreadAiPanel({ threadId, projectId, job, enabled }: { threadId: number; projectId: number | null; job: AiJobView; enabled: boolean }) {
+export function ThreadAiPanel({
+  threadId,
+  projectId,
+  currency,
+  job,
+  enabled,
+}: {
+  threadId: number;
+  projectId: number | null;
+  currency: string;
+  job: AiJobView;
+  enabled: boolean;
+}) {
   return (
     <AiPanel kind="thread_insights" subjectId={threadId} job={job} enabled={enabled} label="Summarize & extract">
-      {(r) => <ThreadInsights result={r} projectId={projectId} />}
+      {(r) => <ThreadInsights result={r} projectId={projectId} currency={currency} />}
     </AiPanel>
   );
 }

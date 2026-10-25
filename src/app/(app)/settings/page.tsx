@@ -38,14 +38,6 @@ export default async function SettingsPage() {
             The client portal never uses AI.
           </p>
         </section>
-        <section className="max-w-2xl text-sm">
-          <h2 className="mb-2 font-medium">Backups</h2>
-          <p className="text-muted-foreground">
-            A nightly job (20:00) dumps the database and pushes it to the private GitHub repo{" "}
-            <code className="rounded bg-muted px-1">soloos-backups</code>. Run <code className="rounded bg-muted px-1">pnpm backup</code>{" "}
-            for an immediate backup. Restore instructions are in the README.
-          </p>
-        </section>
       </div>
     </div>
   );

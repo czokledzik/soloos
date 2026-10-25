@@ -43,7 +43,11 @@ export default async function ThreadPage({ params }: PageProps<"/messages/[id]">
           crm={crm}
           projects={pickers.projects}
           contacts={contacts}
-          ai={<ThreadAiPanel threadId={id} projectId={thread.projectId} job={job} enabled={aiProvider() !== "off"} />}
+          ai={<ThreadAiPanel
+              threadId={id}
+              projectId={thread.projectId}
+              currency={pickers.projects.find((p) => p.id === thread.projectId)?.currency ?? "PLN"}
+              job={job} enabled={aiProvider() !== "off"} />}
         />
       </div>
     </div>

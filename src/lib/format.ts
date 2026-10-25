@@ -23,15 +23,23 @@ export function formatElapsed(totalSec: number): string {
   return `${h}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
 }
 
-/** Minor units → "1 234,50 zł" */
+/** Minor units → "1 234,50 zł" for PLN, "$1,234.50" / "€1,234.50" for other currencies */
 export function formatMoney(minor: number | null | undefined, currency = "PLN"): string {
   if (minor == null) return "—";
   try {
-    return new Intl.NumberFormat("pl-PL", { style: "currency", currency }).format(minor / 100);
+    const locale = currency === "PLN" ? "pl-PL" : "en-US";
+    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(minor / 100);
   } catch {
     // Not an ISO currency code: show the number with whatever was entered.
     return `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2 }).format(minor / 100)} ${currency}`;
   }
+}
+
+/** Amounts in several currencies → "$1,200.00 + 500,00 zł"; "—" when there are none. */
+export function formatMoneyTotals(items: { amount: number | null; currency: string }[]): string {
+  const sums = new Map<string, number>();
+  for (const i of items) if (i.amount != null) sums.set(i.currency, (sums.get(i.currency) ?? 0) + i.amount);
+  return sums.size ? [...sums].map(([cur, v]) => formatMoney(v, cur)).join(" + ") : "—";
 }
 
 /** "pln" → "PLN"; anything that isn't a 3-letter code → null. */

@@ -62,6 +62,7 @@ export const contractType = pgEnum("contract_type", [
   "internal",
 ]);
 export const pricing = pgEnum("pricing", ["hourly", "fixed", "none"]);
+export const portalLang = pgEnum("portal_lang", ["en", "pl"]);
 export const taskStatus = pgEnum("task_status", [
   "backlog",
   "todo",
@@ -133,6 +134,7 @@ export const projects = pgTable(
     portalProgress: boolean().notNull().default(false),
     portalHours: boolean().notNull().default(false), // hours, value and payments
     portalDecisions: boolean().notNull().default(false),
+    portalLang: portalLang().notNull().default("en"), // language of the client portal
     archivedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

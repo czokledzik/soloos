@@ -11,7 +11,7 @@ export default async function ProjectPortalPage({ params }: PageProps<"/projects
   const [project, updates, pages] = await Promise.all([
     db.query.projects.findFirst({
       where: eq(projects.id, id),
-      columns: { portalToken: true, portalProgress: true, portalHours: true, portalDecisions: true },
+      columns: { portalToken: true, portalProgress: true, portalHours: true, portalDecisions: true, portalLang: true },
     }),
     listProjectUpdates(id),
     db
@@ -29,6 +29,7 @@ export default async function ProjectPortalPage({ params }: PageProps<"/projects
           token={project.portalToken}
           origin={await requestOrigin()}
           sections={{ progress: project.portalProgress, hours: project.portalHours, decisions: project.portalDecisions }}
+          lang={project.portalLang}
         />
         <ProjectUpdates projectId={id} updates={updates} />
       </div>

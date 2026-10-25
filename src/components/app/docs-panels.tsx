@@ -50,7 +50,7 @@ export function NewDocPageButton({ projectId }: { projectId: number }) {
   );
 }
 
-export type TemplateOption = { id: string; name: string; description: string; pages: number; questions: number };
+export type TemplateOption = { id: string; name: string; short: string; description: string; pages: number; questions: number };
 
 export function DocTemplateButtons({ projectId, templates }: { projectId: number; templates: TemplateOption[] }) {
   const router = useRouter();
@@ -77,7 +77,7 @@ export function DocTemplateButtons({ projectId, templates }: { projectId: number
         }
       }}
     >
-      <FilesIcon /> From template
+      <FilesIcon /> From template ({t.short})
     </Button>
   ));
 }

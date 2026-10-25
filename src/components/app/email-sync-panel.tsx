@@ -50,7 +50,7 @@ export function EmailSyncPanel({
       ) : (
         <p className="mt-1 text-sm text-muted-foreground">
           Not set up. Add <code>IMAP_HOST</code>, <code>IMAP_USER</code> and <code>IMAP_PASSWORD</code> to the environment
-          (Hostinger: <code>imap.hostinger.com</code>). See the README for scheduling the sync.
+          (e.g. <code>imap.example.com</code>). See the README for scheduling the sync.
         </p>
       )}
     </section>

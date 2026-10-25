@@ -115,7 +115,7 @@ export async function lastEmailSync(): Promise<SyncResult | null> {
   return (row?.value as SyncResult | undefined) ?? null;
 }
 
-/** IMAP implementation (Hostinger and any standard server). */
+/** IMAP implementation (any standard server). */
 export async function imapSource(config: EmailConfig): Promise<MailSource> {
   const { ImapFlow } = await import("imapflow");
   const client = new ImapFlow({

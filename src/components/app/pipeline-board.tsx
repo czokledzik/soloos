@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { differenceInCalendarDays, formatDistanceToNowStrict } from "date-fns";
 import { MessageCircleIcon } from "lucide-react";
 import type { OpportunityStage } from "@/db/schema";
-import { formatMoney, toDateString } from "@/lib/format";
+import { formatMoney, formatMoneyTotals, toDateString } from "@/lib/format";
 import { OPPORTUNITY_STAGES, STAGE_DOT } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { moveOpportunity } from "@/server/crm-actions";
@@ -23,13 +23,13 @@ export function PipelineBoard({ rows }: { rows: PipelineRow[] }) {
     key: s.value,
     className: s.value === "won" || s.value === "lost" ? "w-60" : undefined,
     header: (ids) => {
-      const value = ids.reduce((sum, id) => sum + (byId.get(id)?.estValue ?? 0), 0);
+      const value = formatMoneyTotals(ids.map((id) => ({ amount: byId.get(id)?.estValue ?? null, currency: byId.get(id)?.currency ?? "PLN" })));
       return (
         <>
           <span className={cn("size-2 rounded-full", STAGE_DOT[s.value])} />
           <span className="font-medium">{s.label}</span>
           <span className="text-muted-foreground">{ids.length}</span>
-          {value > 0 && <span className="ml-auto text-xs text-muted-foreground">{formatMoney(value)}</span>}
+          {value !== "—" && <span className="ml-auto text-xs text-muted-foreground">{value}</span>}
         </>
       );
     },
@@ -91,7 +91,7 @@ function LeadCard({ row, overlay }: { row: PipelineRow; overlay: boolean }) {
             {formatDistanceToNowStrict(row.lastContactAt, { addSuffix: true })}
           </span>
         )}
-        {row.estValue != null && <span className="ml-auto shrink-0 font-medium text-foreground">{formatMoney(row.estValue)}</span>}
+        {row.estValue != null && <span className="ml-auto shrink-0 font-medium text-foreground">{formatMoney(row.estValue, row.currency)}</span>}
       </div>
     </div>
   );

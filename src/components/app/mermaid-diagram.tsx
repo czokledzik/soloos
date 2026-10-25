@@ -24,6 +24,8 @@ export function MermaidDiagram({ code, interactive = true }: { code: string; int
           startOnLoad: false,
           securityLevel: "strict",
           theme: resolvedTheme === "dark" ? "dark" : "default",
+          // The app's font instead of Mermaid's default (Trebuchet MS), which most Linux machines lack.
+          fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--font-sans") || undefined,
         });
         const { svg } = await mermaid.render(`mmd-${id}`, code);
         if (!cancelled) {

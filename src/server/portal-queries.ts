@@ -26,6 +26,7 @@ export const getPortal = cache(async (token: string) => {
       portalProgress: projects.portalProgress,
       portalHours: projects.portalHours,
       portalDecisions: projects.portalDecisions,
+      lang: projects.portalLang,
       clientName: organizations.name,
     })
     .from(projects)
@@ -76,6 +77,7 @@ export const getPortal = cache(async (token: string) => {
   }
   return {
     name: project.name,
+    lang: project.lang,
     clientName: project.clientName,
     status: project.status,
     dueDate: project.dueDate,
