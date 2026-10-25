@@ -187,6 +187,16 @@ describe("doc templates", () => {
     );
     expect(await createDocsFromTemplate(p.id, "nope")).toEqual({ ok: false, error: "Unknown template" });
   });
+
+  it("has the same set in every language, with placeholders counted in each", async () => {
+    const [en, pl] = DOC_TEMPLATES;
+    expect([en.short, pl.short]).toEqual(["EN", "PL"]);
+    expect(pl.pages.length).toBe(en.pages.length);
+    expect(pl.questions.length).toBe(en.questions.length);
+    const p = await makeProject();
+    ok(await createDocsFromTemplate(p.id, pl.id));
+    expect((await listDocPages(p.id))[0].todos).toBeGreaterThan(5);
+  });
 });
 
 describe("open questions", () => {

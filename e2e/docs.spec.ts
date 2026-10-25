@@ -94,7 +94,7 @@ test("systems take links but refuse credentials", async ({ page }) => {
 test("doc template adds pages with a placeholder count and starter questions", async ({ page }) => {
   await page.goto(`/projects/${projectId}/docs`);
   page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "From template" }).click();
+  await page.getByRole("button", { name: "From template (PL)" }).click();
   await expect(page.getByText(/Added \d+ pages and \d+ open questions/)).toBeVisible();
   const link = page.getByRole("link", { name: /1\. Przegląd i architektura/ });
   await link.click();

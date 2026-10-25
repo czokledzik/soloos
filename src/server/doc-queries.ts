@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { businessRules, changeRequests, db, decisions, docPages, docRevisions, openQuestions, systems } from "@/db";
-import { TODO_MARKER } from "@/lib/doc-templates";
+import { TODO_MARKERS } from "@/lib/doc-templates";
 
 export async function listDecisions(projectId: number) {
   return db.query.decisions.findMany({
@@ -30,8 +30,11 @@ export async function listDocPages(projectId: number) {
       id: docPages.id,
       title: docPages.title,
       updatedAt: docPages.updatedAt,
-      // How many "[DO UZUPEŁNIENIA…" placeholders are left to fill.
-      todos: sql<number>`((length(${docPages.bodyMd}) - length(replace(${docPages.bodyMd}, ${TODO_MARKER}, ''))) / ${TODO_MARKER.length})::int`,
+      // How many "[TO FILL IN…" placeholders (in any template language) are left to fill.
+      todos: sql<number>`(${sql.join(
+        TODO_MARKERS.map((m) => sql`(length(${docPages.bodyMd}) - length(replace(${docPages.bodyMd}, ${m}, ''))) / ${m.length}`),
+        sql` + `,
+      )})::int`,
     })
     .from(docPages)
     .where(and(eq(docPages.projectId, projectId), isNull(docPages.archivedAt)))

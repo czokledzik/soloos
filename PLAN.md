@@ -42,7 +42,7 @@ Inspired by Wiegers, *Software Requirements Essentials*:
   linked to the decision they came from and where they're implemented). Codes like Q-01 and BR-01 let doc pages and
   prompts cite them.
 - **Doc pages** with revision history and Mermaid diagrams; templates for an automation / AI handover set
-  (`src/lib/doc-templates.ts`, in Polish for now).
+  in English and Polish (`src/lib/doc-templates.ts`).
 - **Systems:** links to repos, workflows, agents and databases. Never credentials; code and configs stay in git.
 
 ### Claude
@@ -53,7 +53,6 @@ Inspired by Wiegers, *Software Requirements Essentials*:
 ## Roadmap
 
 - Settings instead of hardcoded defaults: currency, timezone, contract types.
-- Doc templates in English.
 - One-click deploy (Deploy button) and Docker Compose for self-hosting.
 - Scheduled email sync on hosts that allow frequent cron jobs.
 - Period exports for invoicing platforms; full-text search upgrades (pgvector) if needed.
