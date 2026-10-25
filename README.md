@@ -256,3 +256,7 @@ src/components/app/     app components (timer, board, forms, …)
 src/components/ui/      shadcn primitives
 src/app/(app)/          pages
 ```
+
+## License
+
+[MIT](LICENSE)
