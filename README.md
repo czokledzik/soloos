@@ -141,7 +141,6 @@ The dev server binds to `127.0.0.1` and runs without a password. Set `APP_PASSWO
 | `pnpm test` | Unit + integration tests (Vitest, against the `soloos_test` database) |
 | `pnpm test:e2e` | Browser tests (Playwright, production build on :3100 against `soloos_e2e`) |
 | `pnpm demo:seed` / `pnpm demo:media` | Demo data and the README screenshots/GIFs (see below) |
-| `pnpm backup` | Run the production backup now (triggers the GitHub Action) |
 
 ## Demo data and README media
 
@@ -179,16 +178,7 @@ GitHub Actions runs all of the above on every pull request (`.github/workflows/c
 - `vercel.json` pins functions to `fra1` (next to the database) and builds with `scripts/vercel-build.sh`,
   which runs `pnpm db:migrate` on production deploys only. Preview deploys never touch the schema.
 - Dev and prod are separate databases: develop against local Postgres, ship schema changes as migration files.
-
-## Backups
-
-The production database (Neon) is dumped nightly (~20:00) by a GitHub Action in the private repo
-`your-user/soloos-backups` and committed as `soloos.sql`; git history is the retention.
-The Action's `DATABASE_URL` secret is Neon's direct (unpooled) connection string.
-Neon's own point-in-time restore covers the last few hours on top of that.
-
-Restore: `psql "<empty database>" -f soloos.sql`. For older versions see the backups repo README.
-The local dev database isn't backed up.
+- Back up the production database yourself (e.g. a scheduled `pg_dump`); Neon's point-in-time restore only covers a short window.
 
 ## Importing history
 
